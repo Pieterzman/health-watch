@@ -1,0 +1,54 @@
+type HealthDataUser @model @auth(rules: [{allow: public}]) {
+  id: ID!
+  useruuID: String!
+  age: String
+  weight: String
+  height: String
+  sex: String
+  smartwatch: String
+  opt_out: Boolean!
+  signedUp: AWSDateTime!
+  lastSignedIn: AWSDateTime!
+  lastRefreshed: AWSDateTime!
+  healthDataPts: [HealthDataPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
+  symptomPts: [SymptomPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
+  IllnessPts: [IllnessPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
+  AlcConsumptionPts: [AlcConsumptionPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
+}
+
+type HealthDataPt @model @auth(rules: [{allow: public}])
+@key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
+  id: ID!
+  healthdatauserID: ID!
+  typeString: String!
+  value: Float!
+  unitString: String!
+  sourceID: String!
+  dateFrom: AWSDateTime!
+  dateTo: AWSDateTime!
+  }  
+
+type SymptomPt @model @auth(rules: [{allow: public}])
+@key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
+  id: ID!
+  healthdatauserID: ID!
+  loggedSymptom: String!
+  loggedDate: AWSDate!
+  }  
+
+type IllnessPt @model @auth(rules: [{allow: public}])
+@key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
+  id: ID!
+  healthdatauserID: ID!
+  loggedIllness: String!
+  loggedIllnessDiagnosis: String!
+  loggedDate: AWSDate!
+  }  
+
+type AlcConsumptionPt @model @auth(rules: [{allow: public}])
+@key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
+  id: ID!
+  healthdatauserID: ID!
+  loggedAlcConsumptionPt: String!
+  loggedDate: AWSDate!
+  }
