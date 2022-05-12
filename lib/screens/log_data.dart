@@ -1,9 +1,11 @@
 // import 'package:amplify_datastore/amplify_datastore.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:healthwatch/models/ModelProvider.dart';
 import 'package:healthwatch/models/SymptomModel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:healthwatch/models/alcoholModel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // import 'dart:ui' as ui;
 
@@ -19,7 +21,8 @@ enum AppState {
   SELECTING_SYMPTOMS,
   SELECTING_DATE,
   SELECTING_ILLNESSES,
-  SELECTING_CATEGORY,
+  SELECTING_ALCOHOL,
+  // SELECTING_CATEGORY,
 }
 
 class _LogDataScreenState extends State<LogDataScreen> {
@@ -32,8 +35,28 @@ class _LogDataScreenState extends State<LogDataScreen> {
 
   AppState? _state;
   AppState? _prevState;
-  DateTime? _selectedDate;
+  // DateTime now = DateTime.now();
+  DateTime _selectedDate = DateTime.now();
+  TimeOfDay _selectedTime = TimeOfDay.now();
+  DateTime? _selectedDateTime;
   HealthDataUser? currentHealthDataUser;
+
+  List<String> illnessesDropdown = [
+    'COVID-19',
+    'Flu',
+    'Common Cold',
+    'Gastro / Stomach flu'
+  ];
+  String? selectedIllnessDropdown;
+
+  List<String> illnessDiagnosisList = [
+    'Self diagnosed',
+    'Diagnosed by Doctor or Nurse',
+    'Diagnosed by lab test',
+    'Diagnosed by home test'
+  ];
+
+  String? illnessDiagnonsis;
 
   List<SymptomModel> symptoms = [
     SymptomModel('Fever', false),
@@ -57,28 +80,28 @@ class _LogDataScreenState extends State<LogDataScreen> {
     SymptomModel('Insomnia', false),
     SymptomModel('Lightheaded', false),
   ];
-
-  List<String> illnessesDropdown = [
-    'COVID-19',
-    'Flu',
-    'Common Cold',
-    'Gastro / Stomach flu'
-  ];
-  String? selectedIllnessDropdown;
-
-  List<String> illnessDiagnosisList = [
-    'Self diagnosed',
-    'Diagnosed by Doctor or Nurse',
-    'Diagnosed by lab test',
-    'Diagnosed by home test'
-  ];
-
-  String? illnessDiagnonsis;
-
-  bool alcoholConsumption = false;
-  double? alcoholUnitsConsumed;
-  // List<IllnessModel> selectedIllness = [];
   List<SymptomModel> selectedSymptoms = [];
+
+  List<AlcoholModel> alcoholBeverages = [
+    AlcoholModel("1", "Beer", "small bottle (330ml)", 330, 5, 1.7, 0,
+        "assets/Beverages/Beer.png"),
+    AlcoholModel("2", "Beer", "draught glass (500ml)", 500, 4, 2.0, 0,
+        "assets/Beverages/Pint.png"),
+    AlcoholModel("3", "Cider", "small bottle (330ml)", 330, 4.5, 1.5, 0,
+        "assets/Beverages/Ciderbottle.png"),
+    AlcoholModel("4", "Wine", "standard glass (175ml)", 175, 13, 2.3, 0,
+        "assets/Beverages/Wine.png"),
+    AlcoholModel("5", "Champagne", "small glass (125ml)", 125, 12, 1.5, 0,
+        "assets/Beverages/Champagne.png"),
+    AlcoholModel("6", "Spirits", "single (25ml)", 25, 40, 1.0, 0,
+        "assets/Beverages/Spirits.png"),
+  ];
+  bool alcoholConsumption = false;
+  String alcoholConsumedString = "";
+  double alcoholUnitsConsumed = 0;
+  List<AlcoholModel> selectedBeverages = [];
+
+  // List<IllnessModel> selectedIllness = [];
 
   // Future<void> saveAlcConsumption() {
 
@@ -98,20 +121,23 @@ class _LogDataScreenState extends State<LogDataScreen> {
     } else if (widget.nextScreenState == 0) {
       alcoholConsumption = true;
       setState(() {
-        _prevState = null;
-        _state = AppState.SELECTING_DATE;
+        _prevState = AppState.SELECTING_ALCOHOL;
+        _state = AppState.SELECTING_ALCOHOL;
       });
     }
   }
 
   Future<void> saveSymptoms(List<SymptomModel> selectedSymptoms) async {
     selectedSymptoms.forEach((symptom) async {
-      writeSymptom(symptom.name, _selectedDate!);
+      writeSymptom(symptom.name, _selectedDate);
     });
   }
 
-  Future<void> writeAlcConsumption(DateTime selectedDate) async {
+  Future<void> writeAlcConsumption(DateTime selectedDateTime,
+      double alcoholUnitsConsumed, String loggedAlcConsumptionPt) async {
     /// Get HealthDataUser
+    final double roundedAlcoholUnits =
+        double.parse(alcoholUnitsConsumed.toStringAsFixed(1));
     try {
       final prefs = await SharedPreferences.getInstance();
       final uuid = prefs.getString("useruuid");
@@ -127,8 +153,9 @@ class _LogDataScreenState extends State<LogDataScreen> {
     try {
       AlcConsumptionPt newAlcConsumptionPt = AlcConsumptionPt(
           healthdatauserID: currentHealthDataUser!.id,
-          loggedAlcConsumptionPt: 'Alcohol consumed',
-          loggedDate: TemporalDate(selectedDate.add(Duration(hours: 12))));
+          loggedAlcConsumptionPt: loggedAlcConsumptionPt,
+          loggedUnitsConsumed: roundedAlcoholUnits,
+          loggedDateTime: TemporalDateTime(selectedDateTime));
 
       await Amplify.DataStore.save(newAlcConsumptionPt);
       // print("Created: $Alc");
@@ -191,6 +218,233 @@ class _LogDataScreenState extends State<LogDataScreen> {
     } catch (e) {
       print("Caught exception in saving newSymptomPt: $e");
     }
+  }
+
+  Future<void> appendBeveragesToString(
+      List<AlcoholModel> selectedBeveragesList) async {
+    selectedBeveragesList.forEach((beverage) {
+      alcoholConsumedString +=
+          "${beverage.type}(${beverage.volume_ml}ml)(${beverage.precent}%)[${beverage.bevCounter}],";
+    });
+    print(alcoholConsumedString);
+  }
+
+  Widget _selectingAlcohol() {
+    return Scaffold(
+        appBar: AppBar(
+          title: ShaderMask(
+            blendMode: BlendMode.srcATop,
+            shaderCallback: (bounds) => LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                stops: [
+                  0.0,
+                  0.8
+                ],
+                colors: [
+                  Color.fromRGBO(59, 126, 245, 0.9),
+                  Color.fromRGBO(106, 195, 163, 1),
+                ]).createShader(bounds),
+            child: Text(
+              'Log Alcohol',
+              style: TextStyle(
+                // color: Colors.black,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          backgroundColor: Color.fromRGBO(36, 38, 94, 1),
+          centerTitle: true,
+          leading: MaterialButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/dashboard');
+              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+            },
+            child: Icon(
+              Icons.arrow_back,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        body: ListTileTheme(
+          child: ListView.builder(
+              itemCount: alcoholBeverages.length,
+              itemBuilder: (_, index) => Card(
+                    margin: EdgeInsets.only(top: 10),
+                    child: ListTile(
+                      dense: true,
+                      leading: Image(
+                        image: AssetImage(alcoholBeverages[index].assetImage),
+                        alignment: Alignment.center,
+                        width: 30,
+                      ),
+                      minLeadingWidth: 25,
+                      // AssetImage("assets/beer.png")),
+                      // leading: Icon(Icons.wine_bar, size: 40),
+                      title: Text(
+                        "${alcoholBeverages[index].type}, ${alcoholBeverages[index].precent.toStringAsFixed(alcoholBeverages[index].precent.truncateToDouble() == alcoholBeverages[index].precent ? 0 : 1)}%",
+                        style: TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(alcoholBeverages[index].description),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        // crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          FloatingActionButton(
+                              backgroundColor:
+                                  alcoholBeverages[index].bevCounter == 0
+                                      ? Colors.grey
+                                      : Colors.white,
+                              heroTag: "btn1$index",
+                              mini: true,
+                              child: Icon(
+                                Icons.remove,
+                                color: Color.fromRGBO(36, 38, 94, 1),
+                                // size: 25,
+                              ),
+                              onPressed: () {
+                                alcoholBeverages[index].bevCounter == 0
+                                    ? null
+                                    : setState(() {
+                                        alcoholBeverages[index].bevCounter--;
+
+                                        alcoholUnitsConsumed -=
+                                            alcoholBeverages[index].units;
+
+                                        // selectedBeverages.remove(AlcoholModel(
+                                        //     alcoholBeverages[index].id,
+                                        //     alcoholBeverages[index].type,
+                                        //     alcoholBeverages[index].description,
+                                        //     alcoholBeverages[index].volume_ml,
+                                        //     alcoholBeverages[index].precent,
+                                        //     alcoholBeverages[index].units,
+                                        //     alcoholBeverages[index].bevCounter,
+                                        //     alcoholBeverages[index]
+                                        //         .assetImage));
+                                        // element.name == symptoms[index].name);
+
+                                        // selectedBeverages.removeWhere(
+                                        //     (beverage) =>
+                                        //         beverage.id ==
+                                        //             alcoholBeverages[index]
+                                        //                 .id
+                                        //         beverage.bevCounter ==
+                                        //         alcoholBeverages[index]
+                                        //             .bevCounter);
+
+                                        print(alcoholUnitsConsumed);
+                                      });
+                              }),
+                          const SizedBox(
+                            width: 10,
+                          ),
+                          Text("${alcoholBeverages[index].bevCounter}",
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(
+                            width: 10,
+                          ),
+                          FloatingActionButton(
+                              backgroundColor: Colors.white,
+                              heroTag: "btn2$index",
+                              mini: true,
+                              child: Icon(
+                                Icons.add,
+                                color: Color.fromRGBO(36, 38, 94, 1),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  alcoholBeverages[index].bevCounter++;
+                                  alcoholUnitsConsumed +=
+                                      alcoholBeverages[index].units;
+
+                                  // selectedBeverages.add(AlcoholModel(
+                                  //     alcoholBeverages[index].id,
+                                  //     alcoholBeverages[index].type,
+                                  //     alcoholBeverages[index].description,
+                                  //     alcoholBeverages[index].volume_ml,
+                                  //     alcoholBeverages[index].precent,
+                                  //     alcoholBeverages[index].units,
+                                  //     alcoholBeverages[index].bevCounter,
+                                  //     alcoholBeverages[index].assetImage));
+
+                                  // print('${selectedBeverages.toString()}');
+                                  print(alcoholUnitsConsumed);
+                                });
+                              })
+                        ],
+                      ),
+                    ),
+                  )),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          label: const Text(
+            'Enter Date',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Color.fromRGBO(36, 38, 94, 1),
+          onPressed: () {
+            if (alcoholUnitsConsumed.round() != 0) {
+              selectedBeverages = List.from(alcoholBeverages);
+              selectedBeverages
+                  .removeWhere((beverage) => beverage.bevCounter == 0);
+              setState(() {
+                _selectedTime = TimeOfDay.now();
+                _state = AppState.SELECTING_DATE;
+              });
+              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+            } else {
+              print("No drinks we entered");
+              final snackBar = SnackBar(
+                content: Text(
+                  "No drinks were entered",
+                  textScaleFactor: 1.2,
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              );
+              ScaffoldMessenger.of(context)
+                ..removeCurrentSnackBar()
+                ..showSnackBar(snackBar);
+            }
+          },
+          icon: const Icon((Icons.navigate_next), color: Colors.white),
+        )
+
+        // ListView(
+        //   children: ListTile.divideTiles(
+        //       color: Color.fromRGBO(36, 38, 94, 1),
+        //       tiles: alcoholBeverages.map((beverage) => ListTile(
+        //             dense: false,
+        //             leading: Icon(Icons.local_drink),
+        //             title: Text(beverage.type),
+        //             subtitle: Text(beverage.description),
+        //             trailing: Row(
+        //               // mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        //               mainAxisSize: MainAxisSize.min,
+        //               children: [
+        //                 FloatingActionButton(
+        //                   mini: true,
+        //                   backgroundColor: Colors.white,
+        //                   child: Icon(
+        //                     Icons.add,
+        //                     color: Colors.black87,
+        //                   ),
+        //                   onPressed: () {},
+        //                 ),
+        //                 // Text("C"),
+        //                 // FloatingActionButton(
+        //                 //   onPressed: () {},
+        //                 // )
+        //               ],
+        //             ),
+        //           ))).toList(),
+        // ),
+        );
   }
 
   Widget _selectingSymptoms() {
@@ -503,26 +757,30 @@ class _LogDataScreenState extends State<LogDataScreen> {
                   Color.fromRGBO(59, 126, 245, 0.9),
                   Color.fromRGBO(106, 195, 163, 1),
                 ]).createShader(bounds),
-            child: Text(
-              'Select Date',
-              style: TextStyle(
-                // color: Colors.black,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                // foreground: Paint()
-                //   ..shader = ui.Gradient.linear(
-                //       const Offset(150, 10), const Offset(300, -10), <Color>[
-                //     Color.fromRGBO(106, 195, 163, 1),
-                //     Color.fromRGBO(59, 126, 245, 1),
-                //   ]),
-              ),
-            ),
+            child: _prevState == AppState.SELECTING_ALCOHOL
+                ? Text(
+                    'Select Date & Time',
+                    style: TextStyle(
+                      // color: Colors.black,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : Text(
+                    'Select Date',
+                    style: TextStyle(
+                      // color: Colors.black,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
           backgroundColor: Color.fromRGBO(36, 38, 94, 1),
           leading: MaterialButton(
             onPressed: () {
-              if (_prevState == null) {
-                Navigator.pushReplacementNamed(context, '/dashboard');
+              if (_prevState == AppState.SELECTING_ALCOHOL) {
+                setState(() => _state = AppState.SELECTING_ALCOHOL);
+                // Navigator.pushReplacementNamed(context, '/dashboard');
               } else if (_prevState == AppState.SELECTING_SYMPTOMS) {
                 setState(() => _state = AppState.SELECTING_SYMPTOMS);
               } else if (_prevState == AppState.SELECTING_ILLNESSES) {
@@ -539,93 +797,242 @@ class _LogDataScreenState extends State<LogDataScreen> {
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              const SizedBox(height: 32),
-              _selectedDate == null
-                  ? ShaderMask(
-                      blendMode: BlendMode.srcATop,
-                      shaderCallback: (bounds) => LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color.fromRGBO(230, 50, 50, 1),
-                            Color.fromRGBO(210, 107, 191, 1)
-                          ]).createShader(bounds),
-                      child: Icon(
-                        CupertinoIcons.calendar_badge_plus,
-                        size: 120,
+              const SizedBox(height: 20),
+              // _selectedDate == null ?
+
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    children: [
+                      ShaderMask(
+                        blendMode: BlendMode.srcATop,
+                        shaderCallback: (bounds) => LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color.fromRGBO(230, 50, 50, 1),
+                              Color.fromRGBO(210, 107, 191, 1)
+                            ]).createShader(bounds),
+                        child: Icon(
+                          CupertinoIcons.calendar,
+                          size: 120,
+                        ),
                       ),
-                    )
-                  : ShaderMask(
-                      blendMode: BlendMode.srcATop,
-                      shaderCallback: (bounds) => LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color.fromRGBO(59, 126, 245, 1),
-                            Color.fromRGBO(106, 195, 163, 1),
-                          ]).createShader(bounds),
-                      child: Icon(
-                        CupertinoIcons.calendar,
-                        size: 120,
+                      const SizedBox(
+                        height: 10,
+                      ),
+                      Text(
+                          // _selectedDate == null
+                          //     ? "No date" :
+                          "${_selectedDate.year.toString()}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.day.toString().padLeft(2, '0')}",
+                          textScaleFactor: 1,
+                          style: TextStyle(
+                            color: Color.fromRGBO(36, 38, 94, 1),
+                            fontSize: 25,
+                            fontWeight: FontWeight.bold,
+                          )),
+                      const SizedBox(
+                        height: 20,
+                      ),
+                      ElevatedButton(
+                          child: Text(
+                            'Pick Date',
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.w500),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 10),
+                              elevation: 15,
+                              primary: Color.fromRGBO(36, 38, 94, 1),
+                              textStyle: const TextStyle(
+                                fontSize: 16,
+                                // fontWeight: FontWeight.bold,
+                              )),
+                          onPressed: () {
+                            showDatePicker(
+                                context: context,
+                                initialDate: _selectedDate,
+                                // initialDate: _selectedDate == null
+                                //     ? DateTime.now()
+                                //     : _selectedDate!,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                                builder: (context, child) => Theme(
+                                      data: ThemeData().copyWith(
+                                          dialogTheme: DialogTheme(
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          16))),
+                                          colorScheme: ColorScheme.light(
+                                            primary:
+                                                Color.fromRGBO(36, 38, 94, 1),
+                                          )),
+                                      child: child!,
+                                    )).then((date) {
+                              setState(() {
+                                _selectedDate = date!;
+                              });
+                            });
+                          }),
+                    ],
+                  ),
+                  Visibility(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 25),
+                      child: Column(
+                        children: [
+                          ShaderMask(
+                            blendMode: BlendMode.srcATop,
+                            shaderCallback: (bounds) => LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color.fromRGBO(230, 50, 50, 1),
+                                  Color.fromRGBO(210, 107, 191, 1)
+                                ]).createShader(bounds),
+                            child: Icon(
+                              CupertinoIcons.clock,
+                              size: 120,
+                            ),
+                          ),
+                          const SizedBox(
+                            height: 10,
+                          ),
+                          Text(
+                              // _selectedDate == null
+                              //     ? "No Time" :
+                              "${_selectedTime.hour.toString()}:${_selectedTime.minute.toString().padLeft(2, '0')}",
+                              textScaleFactor: 1,
+                              style: TextStyle(
+                                color: Color.fromRGBO(36, 38, 94, 1),
+                                fontSize: 25,
+                                fontWeight: FontWeight.bold,
+                              )),
+                          const SizedBox(
+                            height: 20,
+                          ),
+                          ElevatedButton(
+                              child: Text(
+                                'Pick Time',
+                                style: TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.w500),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 10),
+                                  elevation: 15,
+                                  primary: Color.fromRGBO(36, 38, 94, 1),
+                                  textStyle: const TextStyle(
+                                    fontSize: 16,
+                                    // fontWeight: FontWeight.bold,
+                                  )),
+                              onPressed: () {
+                                showTimePicker(
+                                    context: context,
+                                    initialTime: _selectedTime,
+                                    builder: (context, child) => Theme(
+                                          data: ThemeData().copyWith(
+                                              dialogTheme: DialogTheme(
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              16))),
+                                              colorScheme: ColorScheme.light(
+                                                primary: Color.fromRGBO(
+                                                    36, 38, 94, 1),
+                                              )),
+                                          child: child!,
+                                        )).then((time) {
+                                  setState(() {
+                                    _selectedTime = time!;
+                                  });
+                                });
+                                // showDatePicker(
+                                //     context: context,
+
+                                //     // initialDate: _selectedDate == null
+                                //     //     ? DateTime.now()
+                                //     //     : _selectedDate!,
+                                //     firstDate: DateTime(2020),
+                                //     lastDate: DateTime.now(),
+                                //     builder: (context, child) => Theme(
+                                //           data: ThemeData().copyWith(
+                                //               colorScheme: ColorScheme.light(
+                                //             primary: Color.fromRGBO(36, 38, 94, 1),
+                                //           )),
+                                //           child: child!,
+                                //         )).then((date) {
+                                //   setState(() {
+                                //     _selectedDate = date!;
+                                //   });
+                                // });
+                              }),
+                        ],
                       ),
                     ),
-              const SizedBox(height: 20),
-              Text(
-                  _selectedDate == null
-                      ? "No date selected"
-                      : "${_selectedDate!.year.toString()}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}",
-                  textScaleFactor: 1,
-                  style: TextStyle(
-                    color: Color.fromRGBO(36, 38, 94, 1),
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    // foreground: Paint()
-                    //   ..shader = ui.Gradient.linear(const Offset(100, -30),
-                    //       const Offset(400, 30), <Color>[
-                    //     Color.fromRGBO(230, 50, 50, 1),
-                    //     Color.fromRGBO(210, 107, 191, 1)
-                    //   ]),
-                  )),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                  child: Text(
-                    'Pick a Date',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    visible:
+                        _prevState == AppState.SELECTING_ALCOHOL ? true : false,
                   ),
-                  style: ElevatedButton.styleFrom(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                      elevation: 15,
-                      primary: Color.fromRGBO(36, 38, 94, 1),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        // fontWeight: FontWeight.bold,
-                      )),
-                  onPressed: () {
-                    showDatePicker(
-                        context: context,
-                        initialDate: _selectedDate == null
-                            ? DateTime.now()
-                            : _selectedDate!,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now(),
-                        builder: (context, child) => Theme(
-                              data: ThemeData().copyWith(
-                                  colorScheme: ColorScheme.light(
-                                primary: Color.fromRGBO(36, 38, 94, 1),
-                              )),
-                              child: child!,
-                            )).then((date) {
-                      setState(() {
-                        _selectedDate = date!;
-                      });
-                    });
-                  }),
+                ],
+              ),
+              // const SizedBox(height: 20),
+              // Text(
+              //     _selectedDate == null
+              //         ? "No date selected"
+              //         : "${_selectedDate!.year.toString()}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}",
+              //     textScaleFactor: 1,
+              //     style: TextStyle(
+              //       color: Color.fromRGBO(36, 38, 94, 1),
+              //       fontSize: 20,
+              //       fontWeight: FontWeight.bold,
+              //     )),
+              // const SizedBox(height: 32),
+
+              // ElevatedButton(
+              //     child: Text(
+              //       'Pick Date',
+              //       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              //     ),
+              //     style: ElevatedButton.styleFrom(
+              //         padding:
+              //             EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              //         elevation: 15,
+              //         primary: Color.fromRGBO(36, 38, 94, 1),
+              //         textStyle: const TextStyle(
+              //           fontSize: 16,
+              //           // fontWeight: FontWeight.bold,
+              //         )),
+              //     onPressed: () {
+              //       showDatePicker(
+              //           context: context,
+              //           initialDate: _selectedDate == null
+              //               ? DateTime.now()
+              //               : _selectedDate!,
+              //           firstDate: DateTime(2020),
+              //           lastDate: DateTime.now(),
+              //           builder: (context, child) => Theme(
+              //                 data: ThemeData().copyWith(
+              //                     colorScheme: ColorScheme.light(
+              //                   primary: Color.fromRGBO(36, 38, 94, 1),
+              //                 )),
+              //                 child: child!,
+              //               )).then((date) {
+              //         setState(() {
+              //           _selectedDate = date!;
+              //         });
+              //       });
+              //     }),
+
               const SizedBox(
                 height: 50,
               ),
-              if (_prevState == null) ...[
+              if (_prevState == AppState.SELECTING_ALCOHOL) ...[
                 Column(
                   // mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,35 +1065,101 @@ class _LogDataScreenState extends State<LogDataScreen> {
                         )),
                         child: Column(
                           children: [
-                            const SizedBox(
-                              height: 15,
-                            ),
-                            Icon(
-                              Icons.liquor,
-                              size: 30,
-                            ),
+                            ListView.builder(
+                                padding: EdgeInsets.only(left: 10, top: 0),
+                                physics: NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                scrollDirection: Axis.vertical,
+                                itemCount: (selectedBeverages.length > 4
+                                    ? 4
+                                    : selectedBeverages.length),
+                                itemBuilder: (context, index) {
+                                  return Column(
+                                    children: [
+                                      const SizedBox(
+                                        height: 10,
+                                      ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            "${selectedBeverages[index].bevCounter.toString()}",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                                fontSize: 23,
+                                                fontWeight: FontWeight.w700),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                right: 15, left: 5),
+                                            child: Text(
+                                              "x",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w500),
+                                            ),
+                                          ),
+                                          Image(
+                                              alignment: Alignment.center,
+                                              width: 32,
+                                              height: 42,
+                                              image: AssetImage(
+                                                  selectedBeverages[index]
+                                                      .assetImage)),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                }),
+                            // const SizedBox(
+                            //   height: 15,
+                            // ),
+                            selectedBeverages.length > 4
+                                ? Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 10,
+                                      ),
+                                      Icon(Icons.more_horiz)
+                                      // Text(
+                                      //   '...',
+                                      //   style: TextStyle(
+                                      //       fontSize: 18,
+                                      //       color:
+                                      //           Color.fromRGBO(36, 38, 94, 1),
+                                      //       fontWeight: FontWeight.w500),
+                                      // ),
+                                    ],
+                                  )
+                                : SizedBox.shrink(),
                           ],
                         ),
                       ),
-                    )
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        // const SizedBox(
+                        //   width: 30,
+                        // ),
+                        Text(
+                          'Total Units: ${alcoholUnitsConsumed.toStringAsFixed(1)}',
+                          style: TextStyle(
+                              fontSize: 25,
+                              color: Color.fromRGBO(36, 38, 94, 1),
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ],
-                )
-
-                // Column(
-                //   children: [
-                //     Icon(
-                //       Icons.liquor,
-                //       size: 50,
-                //     ),
-                //     Text(
-                //       'Alcohol Consumed',
-                //       style: TextStyle(
-                //           fontSize: 24,
-                //           color: Color.fromRGBO(36, 38, 94, 1),
-                //           fontWeight: FontWeight.w500),
-                //     ),
-                //   ],
-                // )
+                ),
               ] else if (_prevState == AppState.SELECTING_SYMPTOMS) ...[
                 Column(
                   // mainAxisAlignment: MainAxisAlignment.start,
@@ -850,27 +1323,33 @@ class _LogDataScreenState extends State<LogDataScreen> {
           ),
           backgroundColor: Color.fromRGBO(36, 38, 94, 1),
           onPressed: () {
-            if (_selectedDate != null) {
-              if (_prevState == null && alcoholConsumption == true) {
-                writeAlcConsumption(_selectedDate!);
-                // print("saving Alcohol Consumption Date");
-              } else if (_prevState == AppState.SELECTING_SYMPTOMS &&
-                  selectedSymptoms.isNotEmpty) {
-                saveSymptoms(selectedSymptoms);
-              } else if (_prevState == AppState.SELECTING_ILLNESSES &&
-                  selectedIllnessDropdown != null &&
-                  illnessDiagnonsis != null) {
-                writeIllness(selectedIllnessDropdown!, illnessDiagnonsis!,
-                    _selectedDate!);
-                // print('saving illness');
-              }
-
-              Navigator.pushReplacementNamed(context, '/dashboard');
-              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+            // if (_selectedDate != null) {
+            if (_prevState == AppState.SELECTING_ALCOHOL &&
+                alcoholConsumption == true &&
+                alcoholUnitsConsumed.roundToDouble() != 0) {
+              appendBeveragesToString(selectedBeverages);
+              _selectedDateTime = DateTime(
+                  _selectedDate.year,
+                  _selectedDate.month,
+                  _selectedDate.day,
+                  _selectedTime.hour,
+                  _selectedTime.minute);
+              writeAlcConsumption(_selectedDateTime!, alcoholUnitsConsumed,
+                  alcoholConsumedString);
+              // print("saving Alcohol Consumption Date");
+            } else if (_prevState == AppState.SELECTING_SYMPTOMS &&
+                selectedSymptoms.isNotEmpty) {
+              saveSymptoms(selectedSymptoms);
+            } else if (_prevState == AppState.SELECTING_ILLNESSES &&
+                selectedIllnessDropdown != null &&
+                illnessDiagnonsis != null) {
+              writeIllness(
+                  selectedIllnessDropdown!, illnessDiagnonsis!, _selectedDate);
+              // print('saving illness');
             } else {
               final snackBar = SnackBar(
                 content: Text(
-                  "No date was selected",
+                  "Error, a value is missing",
                   textScaleFactor: 1.2,
                 ),
                 backgroundColor: Colors.red,
@@ -881,6 +1360,23 @@ class _LogDataScreenState extends State<LogDataScreen> {
                 ..removeCurrentSnackBar()
                 ..showSnackBar(snackBar);
             }
+
+            Navigator.pushReplacementNamed(context, '/dashboard');
+            ScaffoldMessenger.of(context).removeCurrentSnackBar();
+            // } else {
+            //   final snackBar = SnackBar(
+            //     content: Text(
+            //       "No date was selected",
+            //       textScaleFactor: 1.2,
+            //     ),
+            //     backgroundColor: Colors.red,
+            //     duration: Duration(seconds: 2),
+            //     behavior: SnackBarBehavior.floating,
+            //   );
+            //   ScaffoldMessenger.of(context)
+            //     ..removeCurrentSnackBar()
+            //     ..showSnackBar(snackBar);
+            // }
           },
           icon: const Icon((Icons.navigate_next), color: Colors.white),
         ));
@@ -891,6 +1387,8 @@ class _LogDataScreenState extends State<LogDataScreen> {
       return _selectingIllness();
     else if (_state == AppState.SELECTING_SYMPTOMS)
       return _selectingSymptoms();
+    else if (_state == AppState.SELECTING_ALCOHOL)
+      return _selectingAlcohol();
     else if (_state == AppState.SELECTING_DATE) return _selectingDate();
     return Text('Error');
   }
