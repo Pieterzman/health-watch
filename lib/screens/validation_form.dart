@@ -325,7 +325,7 @@ class _ValidationFormScreenState extends State<ValidationFormScreen> {
       body: Theme(
         data: Theme.of(context).copyWith(
             colorScheme:
-                ColorScheme.light(primary: Color.fromRGBO(230, 50, 50, 1))),
+                ColorScheme.light(primary: Color.fromRGBO(36, 38, 94, 1))),
         child: Stepper(
           type: StepperType.horizontal,
           steps: getSteps(),
