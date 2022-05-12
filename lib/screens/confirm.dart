@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:flutter_login/flutter_login.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ConfirmScreen extends StatefulWidget {
   final SignupData data;
@@ -39,6 +40,11 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
             username: data.name!, password: data.password!);
 
         if (user.isSignedIn) {
+          //save current session
+          final prefs = await SharedPreferences.getInstance(); //retrieve UUID
+          prefs.setString('userEmail', data.name!);
+          prefs.setBool('userLoggedIn', user.isSignedIn);
+
           Navigator.pushReplacementNamed(context, '/validation_form');
         }
       }
