@@ -1,0 +1,12 @@
+{
+  "resourceName": "S3HealthData",
+  "policyUUID": "b72f97dc",
+  "bucketName": "healthwatchapphealthdatabucket",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}
