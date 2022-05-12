@@ -32,7 +32,7 @@ class NotificationApi {
   }
 
   static Future showNotification({
-    int id = 0,
+    int id = 1,
     String? title,
     String? body,
     String? payload,
@@ -46,7 +46,7 @@ class NotificationApi {
       );
 
   static Future showScheduledNotification({
-    int id = 0,
+    int id = 1,
     String? title,
     String? body,
     String? payload,
@@ -64,7 +64,7 @@ class NotificationApi {
         androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
+        matchDateTimeComponents: DateTimeComponents.dateAndTime,
       );
 
   static tz.TZDateTime _scheduleDaily(Time time) {
