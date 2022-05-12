@@ -30,7 +30,8 @@ class AlcConsumptionPt extends Model {
   final String id;
   final String? _healthdatauserID;
   final String? _loggedAlcConsumptionPt;
-  final TemporalDate? _loggedDate;
+  final double? _loggedUnitsConsumed;
+  final TemporalDateTime? _loggedDateTime;
   final TemporalDateTime? _createdAt;
   final TemporalDateTime? _updatedAt;
 
@@ -68,17 +69,12 @@ class AlcConsumptionPt extends Model {
     }
   }
   
-  TemporalDate get loggedDate {
-    try {
-      return _loggedDate!;
-    } catch(e) {
-      throw new AmplifyCodeGenModelException(
-          AmplifyExceptionMessages.codeGenRequiredFieldForceCastExceptionMessage,
-          recoverySuggestion:
-            AmplifyExceptionMessages.codeGenRequiredFieldForceCastRecoverySuggestion,
-          underlyingException: e.toString()
-          );
-    }
+  double? get loggedUnitsConsumed {
+    return _loggedUnitsConsumed;
+  }
+  
+  TemporalDateTime? get loggedDateTime {
+    return _loggedDateTime;
   }
   
   TemporalDateTime? get createdAt {
@@ -89,14 +85,15 @@ class AlcConsumptionPt extends Model {
     return _updatedAt;
   }
   
-  const AlcConsumptionPt._internal({required this.id, required healthdatauserID, required loggedAlcConsumptionPt, required loggedDate, createdAt, updatedAt}): _healthdatauserID = healthdatauserID, _loggedAlcConsumptionPt = loggedAlcConsumptionPt, _loggedDate = loggedDate, _createdAt = createdAt, _updatedAt = updatedAt;
+  const AlcConsumptionPt._internal({required this.id, required healthdatauserID, required loggedAlcConsumptionPt, loggedUnitsConsumed, loggedDateTime, createdAt, updatedAt}): _healthdatauserID = healthdatauserID, _loggedAlcConsumptionPt = loggedAlcConsumptionPt, _loggedUnitsConsumed = loggedUnitsConsumed, _loggedDateTime = loggedDateTime, _createdAt = createdAt, _updatedAt = updatedAt;
   
-  factory AlcConsumptionPt({String? id, required String healthdatauserID, required String loggedAlcConsumptionPt, required TemporalDate loggedDate}) {
+  factory AlcConsumptionPt({String? id, required String healthdatauserID, required String loggedAlcConsumptionPt, double? loggedUnitsConsumed, TemporalDateTime? loggedDateTime}) {
     return AlcConsumptionPt._internal(
       id: id == null ? UUID.getUUID() : id,
       healthdatauserID: healthdatauserID,
       loggedAlcConsumptionPt: loggedAlcConsumptionPt,
-      loggedDate: loggedDate);
+      loggedUnitsConsumed: loggedUnitsConsumed,
+      loggedDateTime: loggedDateTime);
   }
   
   bool equals(Object other) {
@@ -110,7 +107,8 @@ class AlcConsumptionPt extends Model {
       id == other.id &&
       _healthdatauserID == other._healthdatauserID &&
       _loggedAlcConsumptionPt == other._loggedAlcConsumptionPt &&
-      _loggedDate == other._loggedDate;
+      _loggedUnitsConsumed == other._loggedUnitsConsumed &&
+      _loggedDateTime == other._loggedDateTime;
   }
   
   @override
@@ -124,7 +122,8 @@ class AlcConsumptionPt extends Model {
     buffer.write("id=" + "$id" + ", ");
     buffer.write("healthdatauserID=" + "$_healthdatauserID" + ", ");
     buffer.write("loggedAlcConsumptionPt=" + "$_loggedAlcConsumptionPt" + ", ");
-    buffer.write("loggedDate=" + (_loggedDate != null ? _loggedDate!.format() : "null") + ", ");
+    buffer.write("loggedUnitsConsumed=" + (_loggedUnitsConsumed != null ? _loggedUnitsConsumed!.toString() : "null") + ", ");
+    buffer.write("loggedDateTime=" + (_loggedDateTime != null ? _loggedDateTime!.format() : "null") + ", ");
     buffer.write("createdAt=" + (_createdAt != null ? _createdAt!.format() : "null") + ", ");
     buffer.write("updatedAt=" + (_updatedAt != null ? _updatedAt!.format() : "null"));
     buffer.write("}");
@@ -132,30 +131,33 @@ class AlcConsumptionPt extends Model {
     return buffer.toString();
   }
   
-  AlcConsumptionPt copyWith({String? id, String? healthdatauserID, String? loggedAlcConsumptionPt, TemporalDate? loggedDate}) {
+  AlcConsumptionPt copyWith({String? id, String? healthdatauserID, String? loggedAlcConsumptionPt, double? loggedUnitsConsumed, TemporalDateTime? loggedDateTime}) {
     return AlcConsumptionPt._internal(
       id: id ?? this.id,
       healthdatauserID: healthdatauserID ?? this.healthdatauserID,
       loggedAlcConsumptionPt: loggedAlcConsumptionPt ?? this.loggedAlcConsumptionPt,
-      loggedDate: loggedDate ?? this.loggedDate);
+      loggedUnitsConsumed: loggedUnitsConsumed ?? this.loggedUnitsConsumed,
+      loggedDateTime: loggedDateTime ?? this.loggedDateTime);
   }
   
   AlcConsumptionPt.fromJson(Map<String, dynamic> json)  
     : id = json['id'],
       _healthdatauserID = json['healthdatauserID'],
       _loggedAlcConsumptionPt = json['loggedAlcConsumptionPt'],
-      _loggedDate = json['loggedDate'] != null ? TemporalDate.fromString(json['loggedDate']) : null,
+      _loggedUnitsConsumed = (json['loggedUnitsConsumed'] as num?)?.toDouble(),
+      _loggedDateTime = json['loggedDateTime'] != null ? TemporalDateTime.fromString(json['loggedDateTime']) : null,
       _createdAt = json['createdAt'] != null ? TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? TemporalDateTime.fromString(json['updatedAt']) : null;
   
   Map<String, dynamic> toJson() => {
-    'id': id, 'healthdatauserID': _healthdatauserID, 'loggedAlcConsumptionPt': _loggedAlcConsumptionPt, 'loggedDate': _loggedDate?.format(), 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id, 'healthdatauserID': _healthdatauserID, 'loggedAlcConsumptionPt': _loggedAlcConsumptionPt, 'loggedUnitsConsumed': _loggedUnitsConsumed, 'loggedDateTime': _loggedDateTime?.format(), 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
 
   static final QueryField ID = QueryField(fieldName: "alcConsumptionPt.id");
   static final QueryField HEALTHDATAUSERID = QueryField(fieldName: "healthdatauserID");
   static final QueryField LOGGEDALCCONSUMPTIONPT = QueryField(fieldName: "loggedAlcConsumptionPt");
-  static final QueryField LOGGEDDATE = QueryField(fieldName: "loggedDate");
+  static final QueryField LOGGEDUNITSCONSUMED = QueryField(fieldName: "loggedUnitsConsumed");
+  static final QueryField LOGGEDDATETIME = QueryField(fieldName: "loggedDateTime");
   static var schema = Model.defineSchema(define: (ModelSchemaDefinition modelSchemaDefinition) {
     modelSchemaDefinition.name = "AlcConsumptionPt";
     modelSchemaDefinition.pluralName = "AlcConsumptionPts";
@@ -186,9 +188,15 @@ class AlcConsumptionPt extends Model {
     ));
     
     modelSchemaDefinition.addField(ModelFieldDefinition.field(
-      key: AlcConsumptionPt.LOGGEDDATE,
-      isRequired: true,
-      ofType: ModelFieldType(ModelFieldTypeEnum.date)
+      key: AlcConsumptionPt.LOGGEDUNITSCONSUMED,
+      isRequired: false,
+      ofType: ModelFieldType(ModelFieldTypeEnum.double)
+    ));
+    
+    modelSchemaDefinition.addField(ModelFieldDefinition.field(
+      key: AlcConsumptionPt.LOGGEDDATETIME,
+      isRequired: false,
+      ofType: ModelFieldType(ModelFieldTypeEnum.dateTime)
     ));
     
     modelSchemaDefinition.addField(ModelFieldDefinition.nonQueryField(
