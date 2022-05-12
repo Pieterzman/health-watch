@@ -42,7 +42,8 @@ class _LoginState extends State<Login> {
         return 'Problem logging in. Please try again.';
       }
 
-      return '${e.message} - ${e.recoverySuggestion}';
+      // return '${e.message} - ${e.recoverySuggestion}';
+      return 'Please make sure you have a stable internet connection';
     }
   }
 
@@ -57,7 +58,8 @@ class _LoginState extends State<Login> {
         );
       }
     } on AuthException catch (e) {
-      return '${e.message} - ${e.recoverySuggestion}';
+      // return '${e.message} - ${e.recoverySuggestion}';
+      return 'Please make sure you have a stable internet connection';
     }
   }
 
@@ -90,7 +92,8 @@ class _LoginState extends State<Login> {
       logSignup(useruuid, thirtyDaysAgo);
       updateLastSignedIn(useruuid);
     } on AuthException catch (e) {
-      return '${e.message} - ${e.recoverySuggestion}';
+      // return '${e.message} - ${e.recoverySuggestion}';
+      return 'Please make sure you have a stable internet connection';
     }
   }
 
@@ -145,7 +148,7 @@ class _LoginState extends State<Login> {
           mandatory: true,
           text: "Informed Consent",
           linkUrl:
-              "https://docs.google.com/document/d/1U57aeTfwK0pMvheEoN0UQyAJo4ED7dSXFmuBvfcO-iE/edit?usp=sharing",
+              "https://www.dropbox.com/s/hlnuhj9u4fbc5qw/Informed%20Consent%20Form.pdf?dl=0",
         ),
         // TermOfService(
         //   id: "Privacy",
