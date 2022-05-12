@@ -1,7 +1,12 @@
 // import 'package:../screens/settings.dart';
+import 'dart:async';
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_login/flutter_login.dart';
+import 'package:healthwatch/screens/upload_data.dart';
 import 'package:healthwatch/screens/validation_form.dart';
 import 'screens/entry.dart';
 import 'screens/confirm.dart';
@@ -16,6 +21,31 @@ void main() async {
   await configureAmplify();
   runApp(MyApp());
 }
+
+// Future<void> initializeService() async {
+//   final service = FlutterBackgroundService();
+//   await service.configure(
+//     androidConfiguration: AndroidConfiguration(
+//       // this will executed when app is in foreground or background in separated isolate
+//       // onStart: onStart,
+
+//       // auto start service
+//       autoStart: true,
+//       isForegroundMode: true,
+//     ),
+//     iosConfiguration: IosConfiguration(
+//       // auto start service
+//       autoStart: true,
+
+//       // this will executed when app is in foreground in separated isolate
+//       onForeground: onStart,
+
+//       // you have to enable background fetch capability on xcode project
+//       onBackground: onIosBackground,
+//     ),
+//   );
+//   service.startService();
+// }
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -49,7 +79,7 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        if (settings.name == '/symptom_log') {
+        if (settings.name == '/log_data') {
           return PageRouteBuilder(
             pageBuilder: (_, __, ___) =>
                 LogDataScreen(nextScreenState: settings.arguments as int),
@@ -64,12 +94,12 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // if (settings.name == '/settings_screen') {
-        //   return PageRouteBuilder(
-        //     pageBuilder: (_, __, ___) => SettingsScreen(),
-        //     transitionsBuilder: (_, __, ___, child) => child,
-        //   );
-        // }
+        if (settings.name == '/upload_data') {
+          return PageRouteBuilder(
+            pageBuilder: (_, __, ___) => UploadS3DataScreen(),
+            transitionsBuilder: (_, __, ___, child) => child,
+          );
+        }
 
         return MaterialPageRoute(builder: (_) => EntryScreen());
       },
