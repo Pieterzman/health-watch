@@ -25,18 +25,20 @@ import 'HealthDataPt.dart';
 import 'HealthDataUser.dart';
 import 'IllnessPt.dart';
 import 'SymptomPt.dart';
+import 'WifiPt.dart';
 
 export 'AlcConsumptionPt.dart';
 export 'HealthDataPt.dart';
 export 'HealthDataUser.dart';
 export 'IllnessPt.dart';
 export 'SymptomPt.dart';
+export 'WifiPt.dart';
 
 class ModelProvider implements ModelProviderInterface {
   @override
-  String version = "e5b459ae493eccb1403fb0a9de70cb42";
+  String version = "86ca44742e31467935b577b0cd380e49";
   @override
-  List<ModelSchema> modelSchemas = [AlcConsumptionPt.schema, HealthDataPt.schema, HealthDataUser.schema, IllnessPt.schema, SymptomPt.schema];
+  List<ModelSchema> modelSchemas = [AlcConsumptionPt.schema, HealthDataPt.schema, HealthDataUser.schema, IllnessPt.schema, SymptomPt.schema, WifiPt.schema];
   static final ModelProvider _instance = ModelProvider();
   @override
   List<ModelSchema> customTypeSchemas = [];
@@ -55,6 +57,8 @@ class ModelProvider implements ModelProviderInterface {
         return IllnessPt.classType;
       case "SymptomPt":
         return SymptomPt.classType;
+      case "WifiPt":
+        return WifiPt.classType;
       default:
         throw Exception("Failed to find model in model provider for model name: " + modelName);
     }
