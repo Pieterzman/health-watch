@@ -50,5 +50,14 @@ type AlcConsumptionPt @model @auth(rules: [{allow: public}])
   id: ID!
   healthdatauserID: ID!
   loggedAlcConsumptionPt: String!
-  loggedDate: AWSDate!
+  loggedUnitsConsumed: Float
+  loggedDateTime: AWSDateTime
   }
+
+  type WifiPt @model @auth(rules: [{allow: public}])
+  @key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
+  id: ID!
+  healthdatauserID: ID!
+  loggedWifiIP: String
+  loggedDate: AWSDateTime
+  }  
