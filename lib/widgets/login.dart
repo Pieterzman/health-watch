@@ -77,19 +77,22 @@ class _LoginState extends State<Login> {
       _data = data;
       demographicDataLogged = false;
       DateTime today = DateTime.now().toUtc();
-      DateTime thirtyDaysAgo = today.subtract(const Duration(days: 1));
-      String lastrefreshed = thirtyDaysAgo.toIso8601String();
+      DateTime fiveDaysAgo = DateTime(today.year, today.month, today.day - 10);
+      // DateTime fiveDaysAgo = today.subtract(const Duration(days: 5));
+      String lastrefreshed = fiveDaysAgo.toIso8601String();
       String useruuid = Uuid().v1();
 
       final prefs = await SharedPreferences.getInstance();
       prefs.setString('useruuid', useruuid);
       prefs.setString('lastrefreshed', lastrefreshed);
+      prefs.setString('lastrefreshed3', lastrefreshed);
+      prefs.setInt("totalHealthDataPoints", 0);
       prefs.setBool('demographicDataLogged', demographicDataLogged!);
       prefs.setBool('opt_out', false);
       // prefs.setBool('notificationsFlag', true);
       // prefs.setBool('alreadyScheduled', false);
 
-      logSignup(useruuid, thirtyDaysAgo);
+      logSignup(useruuid, fiveDaysAgo);
       updateLastSignedIn(useruuid);
     } on AuthException catch (e) {
       // return '${e.message} - ${e.recoverySuggestion}';
@@ -139,16 +142,17 @@ class _LoginState extends State<Login> {
   Widget build(BuildContext context) {
     return FlutterLogin(
       title: 'Welcome',
-      onLogin: _onLogin,
-      onRecoverPassword: (String email) => _onRecoverPassword(context, email),
-      onSignup: _onSignup,
+      onLogin: _onLogin, //call onLogin Future
+      onRecoverPassword: (String email) =>
+          _onRecoverPassword(context, email), //call onRecoverPassword Future
+      onSignup: _onSignup, //call onSignup Future
       termsOfService: [
         TermOfService(
           id: "Consent",
-          mandatory: true,
+          mandatory: true, //makes tickbox mandatory to continue
           text: "Informed Consent",
           linkUrl:
-              "https://www.dropbox.com/s/hlnuhj9u4fbc5qw/Informed%20Consent%20Form.pdf?dl=0",
+              "https://www.healthwatchmobileapp.com/informed-consent", //link to website
         ),
         // TermOfService(
         //   id: "Privacy",
@@ -167,9 +171,14 @@ class _LoginState extends State<Login> {
         //     TermsOfUse(),
         //   ],
         // )
-        Padding(
-          padding: const EdgeInsets.only(top: 600),
-          child: TermsOfUse(),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(
+                top:
+                    700), //spacing to get it at botom of widget (not consistemt with all screen sizes)
+            child: TermsOfUse(), // Terms&Conditions and Privacy Policy
+          ),
         )
         // Column(
         //   children: [
