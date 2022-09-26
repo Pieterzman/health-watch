@@ -21,14 +21,12 @@
 
 import 'package:amplify_core/amplify_core.dart';
 import 'AlcConsumptionPt.dart';
-import 'HealthDataPt.dart';
 import 'HealthDataUser.dart';
 import 'IllnessPt.dart';
 import 'SymptomPt.dart';
 import 'WifiPt.dart';
 
 export 'AlcConsumptionPt.dart';
-export 'HealthDataPt.dart';
 export 'HealthDataUser.dart';
 export 'IllnessPt.dart';
 export 'SymptomPt.dart';
@@ -36,9 +34,9 @@ export 'WifiPt.dart';
 
 class ModelProvider implements ModelProviderInterface {
   @override
-  String version = "86ca44742e31467935b577b0cd380e49";
+  String version = "d7d3e2d5987ff72b99beefde60dd8278";
   @override
-  List<ModelSchema> modelSchemas = [AlcConsumptionPt.schema, HealthDataPt.schema, HealthDataUser.schema, IllnessPt.schema, SymptomPt.schema, WifiPt.schema];
+  List<ModelSchema> modelSchemas = [AlcConsumptionPt.schema, HealthDataUser.schema, IllnessPt.schema, SymptomPt.schema, WifiPt.schema];
   static final ModelProvider _instance = ModelProvider();
   @override
   List<ModelSchema> customTypeSchemas = [];
@@ -49,8 +47,6 @@ class ModelProvider implements ModelProviderInterface {
     switch(modelName) {
       case "AlcConsumptionPt":
         return AlcConsumptionPt.classType;
-      case "HealthDataPt":
-        return HealthDataPt.classType;
       case "HealthDataUser":
         return HealthDataUser.classType;
       case "IllnessPt":
