@@ -1,7 +1,10 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 // import 'dart:ui' as ui;
 import 'package:amplify_datastore/amplify_datastore.dart';
+import 'package:amplify_storage_s3/amplify_storage_s3.dart';
+import 'package:csv/csv.dart';
+import 'package:dart_ipify/dart_ipify.dart';
 // import 'package:fluomatic/api/notification_api.dart';
 // import 'package:fluomatic/models/ModelProvider.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,12 +15,13 @@ import 'package:flutter_native_timezone/flutter_native_timezone.dart';
 import 'package:healthwatch/api/notification_api.dart';
 import 'package:healthwatch/models/ModelProvider.dart';
 import 'package:healthwatch/widgets/terms_of_use.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:health/health.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
+// import 'package:timezone/data/latest.dart' as tz;
+// import 'package:timezone/timezone.dart' as tz;
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -30,7 +34,6 @@ enum AppState {
   DATA_READY,
   NO_DATA,
   AUTH_NOT_GRANTED,
-  // LOG_DEMOGRAPHIC_DATA,
   USER_OPTED_OUT
 }
 
@@ -38,9 +41,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   AuthUser? _user;
   HealthFactory health = HealthFactory();
   List<HealthDataPoint> _healthDataList = [];
-  List<HealthDataPt>? _datastoreHealthDataList = [];
+  // List<HealthDataPt>? _datastoreHealthDataList = [];
   HealthDataUser? currentHealthDataUser;
+  int? totalHealthDatapointsLogged;
   bool? optedOut;
+  bool? networkFlag;
   // bool? notificationsFlag;
   // bool? alreadyScheduled;
 
@@ -52,6 +57,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double? avgDailyRestingHR;
   double? avgDailyHRVariability;
   AppState _state = AppState.DATA_NOT_FETCHED;
+
+  ///last datapoint that was
+  String? lastBatchSyncDate;
+  bool uploadingToStorage = false;
 
   // bool demographicDataLogged = false;
   // bool _isBox1Elevated = false;
@@ -65,7 +74,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // tzsetup();
         // scheduleNotifications();
         getCurrentHealthDataUser();
-        fetchData();
+        // fetchDashboardData();
+        fetchBatchData();
+        // fetchData();
       });
     }).catchError((error) {
       print((error as AuthException).message);
@@ -76,24 +87,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // notificationsFlag = true;
   }
 
-  Future<void> tzsetup() async {
-    try {
-      tz.initializeTimeZones();
-      final locationName = await FlutterNativeTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(locationName));
-      NotificationApi.init(initScheduled: true);
-    } catch (e) {
-      print("failed to setup timezone");
-    }
-  }
+  // Future<void> tzsetup() async {
+  //   try {
+  //     tz.initializeTimeZones();
+  //     final locationName = await FlutterNativeTimezone.getLocalTimezone();
+  //     tz.setLocalLocation(tz.getLocation(locationName));
+  //     NotificationApi.init(initScheduled: true);
+  //   } catch (e) {
+  //     print("failed to setup timezone");
+  //   }
+  // }
 
   void scheduleNotifications() async {
-    NotificationApi.cancelAll();
     NotificationApi.showScheduledNotification(
         title: 'Hey User',
         body: 'Please remember to log your most recent data.',
+        // scheduledDate: now.add(Duration(days: 0, seconds: 10))
         scheduledDate: DateTime.now());
+
     print('Notifications scheduled');
+    // NotificationApi.cancelAll();
+    // NotificationApi.showScheduledNotification(
+    //     title: 'Hey User',
+    //     body: 'Please remember to log your most recent data.',
+    //     scheduledDate: DateTime.now());
+    // print('Notifications scheduled');
   }
 
   Future<HealthDataUser?> getCurrentHealthDataUser() async {
@@ -110,47 +128,241 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future fetchData() async {
-    HealthDataUser? currentuser = await getCurrentHealthDataUser();
-    // currentuser = currentHealthDataUser;
-    // final Future<String?> useruuid = getUserUUID();
-    final prefs = await SharedPreferences.getInstance();
-    final useruuid = prefs.getString("useruuid");
-    final lastrefreshed = prefs.getString("lastrefreshed");
-    // bool demographicDataLogged = prefs.getBool("demographicDataLogged")!;
-    DateTime lastRefreshed1 = DateTime.parse(lastrefreshed!);
-    DateTime? lastRefreshed2 = await getLastRefreshed2(useruuid!);
-    optedOut = prefs.getBool('opt_out');
+  // Future fetchData() async {
+  //   HealthDataUser? currentuser = await getCurrentHealthDataUser();
+  //   // writeWifiData(currentuser!);
+  //   // currentuser = currentHealthDataUser;
+  //   // final Future<String?> useruuid = getUserUUID();
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final useruuid = prefs.getString("useruuid");
+  //   final lastrefreshed = prefs.getString("lastrefreshed");
+  //   // String? lastDayS = prefs.getString("lastDaySynced");
+  //   // bool demographicDataLogged = prefs.getBool("demographicDataLogged")!;
+  //   // DateTime lastDaySynched = DateTime.parse(lastDayS!);
+  //   DateTime lastRefreshed1 = DateTime.parse(lastrefreshed!);
+  //   DateTime? lastRefreshed2 = await getLastRefreshed2(useruuid!);
+  //   optedOut = prefs.getBool('opt_out');
+  //   DateTime now = DateTime.now();
+  //   // DateTime startOfDay = DateTime(now.year, now.month, now.day);
+  //   // DateTime endOfDay = startOfDay.add(Duration(days: 1));
+
+  //   if (lastRefreshed2 != lastRefreshed1) {
+  //     print("last refreshed times not the same");
+  //   }
+
+  //   // Stream<SubscriptionEvent<HealthDataPt>> stream =
+  //   //     Amplify.DataStore.observe(HealthDataPt.classType);
+
+  //   // stream.listen((event) {
+  //   //   print('Received event of type ' + event.eventType.toString());
+  //   //   print('Received HealthDataPt ' + event.item.toString());
+  //   // });
+
+  //   DateTime startDate = lastRefreshed1;
+  //   DateTime endDate = DateTime.now().toUtc();
+  //   // DateTime endDate = DateTime(now.year, now.month, now.day - 1, 23, 59, 999);
+  //   print("startDate: $startDate --- endDate: $endDate");
+
+  //   ////////////////////////////////////     Get Each Day in between lastsynced and yesterday midnight
+  //   // var midnight = DateTime(startDate.year, startDate.month, startDate.day);
+  //   // var nextMidnight = DateTime(
+  //   //     midnight.year, midnight.month, midnight.day + 1, 23, 59, 59, 999);
+  //   // var endMidnight = DateTime(endDate.year, endDate.month, endDate.day);
+
+  //   // if (startDate.day != endDate.day) {
+  //   //   do {
+  //   //     print('$midnight---$nextMidnight');
+  //   //     midnight = nextMidnight;
+  //   //     nextMidnight =
+  //   //         DateTime(midnight.year, midnight.month, midnight.day + 1);
+  //   //   } while (nextMidnight.isBefore(endMidnight));
+  //   // }
+  //   ////////////////////////////////////
+
+  //   // HealthFactory health = HealthFactory();
+
+  //   List<HealthDataType>? types;
+  //   List<HealthDataAccess>? permissions;
+
+  //   /// Define the types to get.
+  //   if (Platform.isAndroid) {
+  //     types = [
+  //       HealthDataType.STEPS,
+  //       HealthDataType.HEART_RATE,
+  //       HealthDataType.SLEEP_IN_BED,
+  //       HealthDataType.SLEEP_ASLEEP
+  //     ];
+  //     permissions = [
+  //       HealthDataAccess.READ,
+  //       HealthDataAccess.READ,
+  //       HealthDataAccess.READ,
+  //       HealthDataAccess.READ,
+  //     ];
+  //   } else if (Platform.isIOS) {
+  //     types = [
+  //       HealthDataType.STEPS,
+  //       HealthDataType.HEART_RATE,
+  //       HealthDataType.RESTING_HEART_RATE,
+  //       HealthDataType.HEART_RATE_VARIABILITY_SDNN,
+  //       HealthDataType.SLEEP_IN_BED,
+  //       HealthDataType.SLEEP_ASLEEP
+  //     ];
+  //     permissions = [
+  //       HealthDataAccess.READ,
+  //       HealthDataAccess.READ,
+  //       HealthDataAccess.READ,
+  //       HealthDataAccess.READ,
+  //       HealthDataAccess.READ,
+  //       HealthDataAccess.READ,
+  //     ];
+  //   }
+
+  //   setState(() => _state = AppState.FETCHING_DATA);
+
+  //   /// You MUST request access to the data types before reading them
+  //   if (Platform.isAndroid) {
+  //     final permissionStatus = await Permission.activityRecognition.request();
+  //     if (await permissionStatus.isDenied ||
+  //         await permissionStatus.isPermanentlyDenied) {
+  //       setState(() {
+  //         AppState.AUTH_NOT_GRANTED;
+  //       });
+  //     }
+  //   }
+
+  //   bool accessWasGranted =
+  //       await health.requestAuthorization(types!, permissions: permissions!);
+
+  //   print(accessWasGranted);
+
+  //   // if (currentuser!.opt_out == false) {
+  //   if (accessWasGranted && optedOut == false) {
+  //     try {
+  //       /// Fetch new data
+  //       List<HealthDataPoint> healthData =
+  //           await health.getHealthDataFromTypes(startDate, endDate, types);
+
+  //       /// Save all the new data points //////////////////////////////////////////////////////////////////   OPTIMIZE
+  //       _healthDataList.addAll(healthData);
+  //     } catch (e) {
+  //       print("Caught exception in getHealthDataFromTypes: $e");
+  //     }
+
+  //     if (_healthDataList.isNotEmpty) {
+  //       /// Filter out duplicates
+
+  //       _healthDataList = HealthFactory.removeDuplicates(_healthDataList);
+
+  //       ///Sort and Find most recent datapoint
+  //       _healthDataList.sort((a, b) => a.dateTo.compareTo(b.dateTo));
+
+  //       /// Find and save last refreshed
+  //       HealthDataPoint lastHealthDataPoint = _healthDataList.last;
+  //       DateTime lastHealthDataPointDate = lastHealthDataPoint.dateTo.toUtc();
+  //       lastHealthDataPointDate =
+  //           lastHealthDataPointDate.add(const Duration(milliseconds: 1));
+
+  //       prefs.setString(
+  //           'lastrefreshed', lastHealthDataPointDate.toIso8601String());
+
+  //       updateLastRefreshed2(TemporalDateTime(lastHealthDataPointDate));
+
+  //       /// Save Data to DataStore
+
+  //       _healthDataList.forEach((x) async {
+  //         TemporalDateTime temporalDateTimeFrom = TemporalDateTime(x.dateFrom);
+  //         TemporalDateTime temporalDateTimeTo = TemporalDateTime(x.dateTo);
+  //         writeDatastore(
+  //             currentuser,
+  //             x.typeString,
+  //             x.value.toDouble(),
+  //             x.unitString,
+  //             x.sourceId,
+  //             temporalDateTimeFrom,
+  //             temporalDateTimeTo);
+  //       });
+  //     }
+
+  //     /// Get HealthData from DataStore
+  //     _datastoreHealthDataList = await readDatastore(currentuser);
+
+  //     // updateLastRefreshed2(TemporalDateTime(lastHealthDataPt));
+  //     _healthDataList.clear();
+
+  //     /// Update the UI to display the results
+  //     setState(() {
+  //       _state = _datastoreHealthDataList!.isEmpty
+  //           ? AppState.NO_DATA
+  //           : AppState.DATA_READY;
+  //     });
+
+  //     ///
+  //   } else if (!accessWasGranted && optedOut == false) {
+  //     print("Authorization not granted");
+  //     setState(() => _state = AppState.AUTH_NOT_GRANTED);
+  //   } else if (optedOut == true) {
+  //     setState(() => _state = AppState.USER_OPTED_OUT);
+  //   }
+  //   // } else {
+  //   //   print("User Opted out of the study");
+  //   //   setState(() => _state = AppState.DATA_NOT_FETCHED);
+  //   // }
+  // }
+
+  Future<void> fetchDashboardData() async {
     DateTime now = DateTime.now();
     DateTime startOfDay = DateTime(now.year, now.month, now.day);
     DateTime endOfDay = startOfDay.add(Duration(days: 1));
+    _state = AppState.FETCHING_DATA;
 
-    if (lastRefreshed2 != lastRefreshed1) {
-      print("last refreshed times not the same");
+    ///check for access
+
+    dailySteps = await health.getTotalStepsInInterval(startOfDay, endOfDay);
+    await fetchDailySleep(now);
+    await fetchDailyHeartRate(startOfDay, endOfDay);
+
+    if (Platform.isIOS) {
+      await fetchDailyRestingHeartRate(startOfDay, endOfDay);
+      await fetchDailyHeartRateVariability(startOfDay, endOfDay);
     }
 
-    DateTime startDate = lastRefreshed1;
-    DateTime endDate = DateTime.now().toUtc();
+    setState(() {
+      _state = AppState.DATA_READY;
+    });
+    // _state = AppState.DATA_READY;
+  }
 
-    // HealthFactory health = HealthFactory();
+  Future<void> fetchBatchData() async {
+    HealthDataUser? currentuser = await getCurrentHealthDataUser();
+    await writeWifiData(currentuser!);
+    HealthFactory health = HealthFactory();
+    final prefs = await SharedPreferences.getInstance();
+    final lastrefreshed3 = prefs.getString("lastrefreshed3");
+    DateTime lastRefreshedBatch = DateTime.parse(lastrefreshed3!);
+    // DateTime lastRefreshedBatch = DateTime(2022, 5, 9);
+    optedOut = prefs.getBool('opt_out')!;
+    setState(() => _state = AppState.FETCHING_DATA);
+    DateTime? lastBatchDataPointDate;
+    totalHealthDatapointsLogged = prefs.getInt("totalHealthDataPoints");
 
+    /// Declare DateTimes
+    DateTime now = DateTime.now();
+    DateTime startBatchDate = lastRefreshedBatch;
+    // DateTime endDate = DateTime.now().toUtc();
+    // DateTime endBatchDate = DateTime(now.year, now.month, now.day);
+    // print("startBatchDate: $startBatchDate --> endBatchDate: $endBatchDate");
+
+    ///Declare Lists
+    List<HealthDataPoint> _batchHealthDataList = [];
     List<HealthDataType>? types;
-    List<HealthDataAccess>? permissions;
 
-    /// Define the types to get.
+    /// Define the health types to get.
     if (Platform.isAndroid) {
       types = [
         HealthDataType.STEPS,
         HealthDataType.HEART_RATE,
-        // HealthDataType.RESTING_HEART_RATE,
         HealthDataType.SLEEP_IN_BED,
         HealthDataType.SLEEP_ASLEEP
-      ];
-      permissions = [
-        HealthDataAccess.READ,
-        HealthDataAccess.READ,
-        HealthDataAccess.READ,
-        HealthDataAccess.READ,
       ];
     } else if (Platform.isIOS) {
       types = [
@@ -161,135 +373,260 @@ class _DashboardScreenState extends State<DashboardScreen> {
         HealthDataType.SLEEP_IN_BED,
         HealthDataType.SLEEP_ASLEEP
       ];
-      permissions = [
-        HealthDataAccess.READ,
-        HealthDataAccess.READ,
-        HealthDataAccess.READ,
-        HealthDataAccess.READ,
-        HealthDataAccess.READ,
-        HealthDataAccess.READ,
-      ];
     }
 
-    // if (demographicDataLogged == true) {
-    //   setState(() => _state = AppState.FETCHING_DATA);
-    // } else {
-    //   setState(() => _state = AppState.LOG_DEMOGRAPHIC_DATA);
-    // }
-
-    // if (optedOut == true) {
-    //   setState(() {
-    //     _state = AppState.USER_OPTED_OUT;
-    //   });
-    // } else {
-    setState(() => _state = AppState.FETCHING_DATA);
-    // }
-
-    /// You MUST request access to the data types before reading them
     if (Platform.isAndroid) {
       final permissionStatus = await Permission.activityRecognition.request();
       if (await permissionStatus.isDenied ||
           await permissionStatus.isPermanentlyDenied) {
-        setState(() {
-          AppState.AUTH_NOT_GRANTED;
-        });
+        // setState(() {
+        //   AppState.AUTH_NOT_GRANTED;
+        // });
       }
     }
-    // PermissionStatus activityrecognitionGranted =
-    //     await Permission.activityRecognition.request();
 
-    bool accessWasGranted =
-        await health.requestAuthorization(types!, permissions: permissions!);
+    bool accessWasGranted = await health.requestAuthorization(types!);
 
-    // if (currentuser!.opt_out == false) {
     if (accessWasGranted && optedOut == false) {
-      try {
-        /// Fetch new data
-        List<HealthDataPoint> healthData =
-            await health.getHealthDataFromTypes(startDate, endDate, types);
+      //////////Get last datapoint date
+      List<HealthDataPoint> lastBatchHealthData =
+          await health.getHealthDataFromTypes(
+              DateTime(now.year, now.month, now.day - 5),
+              DateTime.now(),
+              types);
 
-        /// Save all the new data points //////////////////////////////////////////////////////////////////   OPTIMIZE
-        _healthDataList.addAll(healthData);
-      } catch (e) {
-        print("Caught exception in getHealthDataFromTypes: $e");
+      lastBatchHealthData.sort((a, b) => a.dateTo.compareTo(b.dateTo));
+      lastBatchDataPointDate = lastBatchHealthData.last.dateTo;
+      print(
+          "startBatchDate: $startBatchDate --> endBatchDate: $lastBatchDataPointDate");
+      //////////
+
+      ////////////////////////////////////     Get Each Day in between lastsynced and yesterday midnight
+      var midnight = startBatchDate;
+      // DateTime(startBatchDate.year, startBatchDate.month, startBatchDate.day);
+      var nextMidnight =
+          DateTime(midnight.year, midnight.month, midnight.day + 1);
+      var endMidnight = DateTime(lastBatchDataPointDate.year,
+          lastBatchDataPointDate.month, lastBatchDataPointDate.day);
+
+      bool batchIsEmpty = false;
+
+      if ((nextMidnight.isBefore(endMidnight) ||
+              nextMidnight.isAtSameMomentAs(endMidnight)) &&
+          networkFlag == true) {
+        do {
+          print('$midnight---$nextMidnight');
+///////////////////////////////
+          try {
+            List<HealthDataPoint> batchHealthData = await health
+                .getHealthDataFromTypes(midnight, nextMidnight, types);
+
+            _batchHealthDataList.addAll(batchHealthData);
+          } catch (e) {
+            print("Caught exception in getHealthDataFromTypes: $e");
+          }
+
+          if (_batchHealthDataList.isNotEmpty) {
+            /// Filter out duplicates
+            _batchHealthDataList =
+                HealthFactory.removeDuplicates(_batchHealthDataList);
+
+            ///Sort and Find most recent datapoint
+            _batchHealthDataList.sort((a, b) => a.dateTo.compareTo(b.dateTo));
+            // lastBatchDataPointDate = _batchHealthDataList.last.dateTo;
+
+            generateCsvFile(
+                _batchHealthDataList, currentuser, midnight, nextMidnight);
+
+            totalHealthDatapointsLogged =
+                totalHealthDatapointsLogged! + _batchHealthDataList.length;
+
+            prefs.setInt("totalHealthDataPoints", totalHealthDatapointsLogged!);
+
+            ///
+            ///
+            ///
+
+          } else {
+            print("Batch HealthDataList is Empty");
+            // prefs.setString(
+            //     'lastrefreshed3',
+            //     DateTime(midnight.year, midnight.month, midnight.day - 1)
+            //         .toIso8601String());
+
+            // batchIsEmpty = true;
+          }
+          prefs.setString('lastrefreshed3', nextMidnight.toIso8601String());
+          updateLastRefreshed2(TemporalDateTime(nextMidnight));
+          midnight = nextMidnight;
+          nextMidnight =
+              DateTime(midnight.year, midnight.month, midnight.day + 1);
+
+          //////////////////////////////
+
+          _batchHealthDataList = [];
+        } while ((nextMidnight.isBefore(endMidnight) ||
+                nextMidnight.isAtSameMomentAs(endMidnight)) &&
+            batchIsEmpty == false);
+        print("StartDay is the same as EndDay");
+      } else if (networkFlag == false) {
+        print("could not fetch health data to upload, because network is down");
       }
 
-      if (_healthDataList.isNotEmpty) {
-        /// Filter out duplicates
+      lastBatchSyncDate = prefs
+          .getString(
+            "lastrefreshed3",
+          )!
+          .substring(0, 10);
 
-        // _healthDataList = HealthFactory.removeDuplicates(_healthDataList);
-
-        ///Sort and Find most recent datapoint
-        _healthDataList.sort((a, b) => a.dateTo.compareTo(b.dateTo));
-
-        /// Find and save last refreshed
-        HealthDataPoint lastHealthDataPoint = _healthDataList.last;
-        DateTime lastHealthDataPointDate = lastHealthDataPoint.dateTo.toUtc();
-        lastHealthDataPointDate =
-            lastHealthDataPointDate.add(const Duration(milliseconds: 1));
-
-        prefs.setString(
-            'lastrefreshed', lastHealthDataPointDate.toIso8601String());
-        updateLastRefreshed2(TemporalDateTime(lastHealthDataPointDate));
-
-        /// Save Data to DataStore
-
-        _healthDataList.forEach((x) async {
-          TemporalDateTime temporalDateTimeFrom = TemporalDateTime(x.dateFrom);
-          TemporalDateTime temporalDateTimeTo = TemporalDateTime(x.dateTo);
-          writeDatastore(
-              currentuser,
-              x.typeString,
-              x.value.toDouble(),
-              x.unitString,
-              x.sourceId,
-              temporalDateTimeFrom,
-              temporalDateTimeTo);
-        });
-      }
-
-      dailySteps = await health.getTotalStepsInInterval(startOfDay, endOfDay);
-
-      await fetchDailySleep(now);
-      await fetchDailyHeartRate(startOfDay, endOfDay);
-
-      if (Platform.isIOS) {
-        await fetchDailyRestingHeartRate(startOfDay, endOfDay);
-        await fetchDailyHeartRateVariability(startOfDay, endOfDay);
-      }
-
-      /// Get HealthData from DataStore
-      _datastoreHealthDataList = await readDatastore(currentuser);
-
-      // updateLastRefreshed2(TemporalDateTime(lastHealthDataPt));
-      _healthDataList.clear();
-      // print(_datastoreHealthDataList?.length);
-
-      /// Update the UI to display the results
-      ///
-
-      setState(() {
-        _state = _datastoreHealthDataList!.isEmpty
-            ? AppState.NO_DATA
-            : AppState.DATA_READY;
-      });
-
-      ///
+      await fetchDashboardData();
+      setState(() => _state = AppState.DATA_READY);
+      ////////////////////////////////////
     } else if (!accessWasGranted && optedOut == false) {
       print("Authorization not granted");
       setState(() => _state = AppState.AUTH_NOT_GRANTED);
     } else if (optedOut == true) {
       setState(() => _state = AppState.USER_OPTED_OUT);
     }
-    // } else {
-    //   print("User Opted out of the study");
-    //   setState(() => _state = AppState.DATA_NOT_FETCHED);
-    // }
+  }
+
+  Future<void> generateCsvFile(
+      List<HealthDataPoint> batchHealthDataList,
+      HealthDataUser currentuser,
+      DateTime startMidnightDate,
+      DateTime endMidnightDate) async {
+    // setState(() => _state = AppState.GENERATING_CSV);
+    List<List<dynamic>> userListOfHealthData = [];
+
+    userListOfHealthData = List<List<dynamic>>.empty(growable: true);
+
+    List<dynamic> headerRow = [];
+    headerRow.add("UserID");
+    headerRow.add("typeString");
+    headerRow.add("value");
+    headerRow.add("unitString");
+    headerRow.add("sourceID");
+    headerRow.add("dateFrom");
+    headerRow.add("dateTo");
+    userListOfHealthData.add(headerRow);
+
+    batchHealthDataList.forEach((Pt) {
+      List<dynamic> row = List.empty(growable: true);
+      row.add("${currentuser.id}");
+      row.add("${Pt.typeString}");
+      row.add("${Pt.value}");
+      row.add("${Pt.unitString}");
+      row.add("${Pt.sourceId}");
+      row.add("${TemporalDateTime(Pt.dateFrom)}");
+      row.add("${TemporalDateTime(Pt.dateTo)}");
+      // print(row);
+      userListOfHealthData.add(row);
+      // print(userListOfHealthData);
+    });
+
+    String csv = const ListToCsvConverter().convert(userListOfHealthData);
+    print(csv);
+    uploadCSVFileToS3(csv, currentuser, startMidnightDate, endMidnightDate);
+  }
+
+  Future<void> uploadCSVFileToS3(String csv, HealthDataUser currentuser,
+      DateTime startDate, DateTime endDate) async {
+    // setState(() => _state = AppState.UPLOADING_TO_S3);
+
+// Create a dummy file
+    // final csvString = 'Example file contents';
+    final tempDir = await getTemporaryDirectory();
+    final csvFile = File(tempDir.path + '/$startDate-$endDate' + '.csv')
+      ..createSync()
+      ..writeAsStringSync(csv);
+
+    print(tempDir.path + '/$startDate-$endDate' + '.csv');
+
+    final uploadOptions = S3UploadFileOptions(
+      accessLevel: StorageAccessLevel.private,
+    );
+
+    // Upload the file to S3
+    try {
+      setState(() => uploadingToStorage = true);
+      final UploadFileResult result = await Amplify.Storage.uploadFile(
+          local: csvFile,
+          key:
+              'daily/${currentuser.id}/${TemporalDateTime(startDate)}-${TemporalDateTime(endDate)}.csv',
+          options: uploadOptions,
+          onProgress: (progress) {
+            print("Fraction completed: " +
+                progress.getFractionCompleted().toString());
+          });
+      print('Successfully uploaded file: ${result.key}');
+      setState(() => uploadingToStorage = false);
+      // setState(() => _state = AppState.DONE_UPLOADED);
+      File(tempDir.path + '/$startDate-$endDate' + '.csv').delete();
+      print("${tempDir.path + '/$startDate-$endDate' + '.csv'} ---> Deleted");
+    } on StorageException catch (e) {
+      print('Error uploading file: $e');
+    }
+  }
+
+  // Future<void> findLastHealthDataPoint() {
+  //   DateTime now = DateTime.now();
+  //   DateTime midnightToday = DateTime(now.year, now.month, now.day);
+  // }
+
+//   Future<void> uploadCSVFileToS3() async {
+// // Create a dummy file
+//     final exampleString = 'Example file contents';
+//     final tempDir = await getTemporaryDirectory();
+//     final exampleFile = File(tempDir.path + '/example.txt')
+//       ..createSync()
+//       ..writeAsStringSync(exampleString);
+
+//     // Upload the file to S3
+//     try {
+//       final UploadFileResult result = await Amplify.Storage.uploadFile(
+//           local: exampleFile,
+//           key: 'ExampleKey',
+//           onProgress: (progress) {
+//             print("Fraction completed: " +
+//                 progress.getFractionCompleted().toString());
+//           });
+//       print('Successfully uploaded file: ${result.key}');
+//     } on StorageException catch (e) {
+//       print('Error uploading file: $e');
+//     }
+//   }
+
+  Future<void> writeWifiData(HealthDataUser currentuser) async {
+    try {
+      DateTime now = DateTime.now();
+      final ipv4 = await Ipify.ipv4(); //public wifi IP
+      print(ipv4);
+
+      setState(() => networkFlag = true);
+
+      ///Save WifiIP to DataStore
+      try {
+        WifiPt newWifiPt = WifiPt(
+            healthdatauserID: currentuser.id,
+            loggedWifiIP: ipv4,
+            loggedDate: TemporalDateTime(now));
+
+        await Amplify.DataStore.save(newWifiPt);
+        print("Created: $newWifiPt");
+      } catch (e) {
+        print("Caught exception in saving newWifiPt: $e");
+      }
+    } on Exception catch (e) {
+      // throw e;
+      setState(() => networkFlag = false);
+      print(e);
+    }
   }
 
   Future fetchDailySleep(DateTime now) async {
     DateTime endOfSleepDay = DateTime(now.year, now.month, now.day, 19);
-    DateTime startOfSleepDay = endOfSleepDay.subtract(Duration(days: 1));
+    DateTime startOfSleepDay = DateTime(
+        endOfSleepDay.year, endOfSleepDay.month, endOfSleepDay.day - 1, 19);
     String? firstSleepSourceName;
     String? firstInBedSourceName;
     double dailySleep = 0;
@@ -394,58 +731,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   /// Write Health Data to Local Datastore
-  Future<void> writeDatastore(
-      HealthDataUser? currentuser,
-      String type,
-      double val,
-      String unit,
-      String sourceid,
-      TemporalDateTime datefrom,
-      TemporalDateTime dateto) async {
-    try {
-      HealthDataPt newHealthDataPt = HealthDataPt(
-          healthdatauserID: currentuser!.id,
-          typeString: type,
-          value: val,
-          unitString: unit,
-          sourceID: sourceid,
-          dateFrom: datefrom,
-          dateTo: dateto);
-      await Amplify.DataStore.save(newHealthDataPt);
-      // print("Saved: $newHealthDataPt");
-    } catch (e) {
-      print("Caught exception in getHealthDataFromTypes: $e");
-    }
-  }
+  // Future<void> writeDatastore(
+  //     HealthDataUser? currentuser,
+  //     String type,
+  //     double val,
+  //     String unit,
+  //     String sourceid,
+  //     TemporalDateTime datefrom,
+  //     TemporalDateTime dateto) async {
+  //   try {
+  //     HealthDataPt newHealthDataPt = HealthDataPt(
+  //         healthdatauserID: currentuser!.id,
+  //         typeString: type,
+  //         value: val,
+  //         unitString: unit,
+  //         sourceID: sourceid,
+  //         dateFrom: datefrom,
+  //         dateTo: dateto);
+  //     await Amplify.DataStore.save(newHealthDataPt);
+  //     // print("Saved: $newHealthDataPt");
+  //   } catch (e) {
+  //     print("Caught exception in getHealthDataFromTypes: $e");
+  //   }
+  // }
 
   ///Read Data from Local Datastore
-  Future<List<HealthDataPt>?> readDatastore(HealthDataUser? currentuser) async {
-    try {
-      List<HealthDataPt> healthdatapts = await Amplify.DataStore.query(
-          HealthDataPt.classType,
-          where: HealthDataPt.HEALTHDATAUSERID.eq(currentuser!.id),
-          pagination: new QueryPagination(page: 0, limit: 10000),
-          sortBy: [HealthDataPt.DATETO.descending()]);
-      return healthdatapts;
-    } on DataStoreException catch (e) {
-      print("Query failed: $e");
-      return null;
-    }
-  }
+  // Future<List<HealthDataPt>?> readDatastore(HealthDataUser? currentuser) async {
+  //   try {
+  //     List<HealthDataPt> healthdatapts = await Amplify.DataStore.query(
+  //         HealthDataPt.classType,
+  //         where: HealthDataPt.HEALTHDATAUSERID.eq(currentuser!.id),
+  //         pagination: new QueryPagination(page: 0, limit: 10000),
+  //         sortBy: [HealthDataPt.DATETO.descending()]);
+  //     return healthdatapts;
+  //   } on DataStoreException catch (e) {
+  //     print("Query failed: $e");
+  //     return null;
+  //   }
+  // }
 
   /// Delete Data from Local Datastore
   Future<void> deleteDatastore(HealthDataUser currentuser) async {
-    (await Amplify.DataStore.query(HealthDataPt.classType,
-            pagination: new QueryPagination(page: 0, limit: 1000000),
-            where: HealthDataPt.HEALTHDATAUSERID.eq(currentuser.id)))
-        .forEach((element) async {
-      try {
-        await Amplify.DataStore.delete(element);
-        // print("Deleted: $element");
-      } on DataStoreException catch (e) {
-        print("Delete Failed: $e");
-      }
-    });
+    // (await Amplify.DataStore.query(HealthDataPt.classType,
+    //         pagination: new QueryPagination(page: 0, limit: 1000000),
+    //         where: HealthDataPt.HEALTHDATAUSERID.eq(currentuser.id)))
+    //     .forEach((element) async {
+    //   try {
+    //     await Amplify.DataStore.delete(element);
+    //     // print("Deleted: $element");
+    //   } on DataStoreException catch (e) {
+    //     print("Delete Failed: $e");
+    //   }
+    // });
 
     (await Amplify.DataStore.query(SymptomPt.classType,
             pagination: new QueryPagination(page: 0, limit: 1000000),
@@ -561,10 +898,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Future<void> saveNotificationsFlag(bool flagValue) async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   prefs.setBool('notificationsFlag', flagValue);
-  // }
+  Future<void> resetLastRefreshed3() async {
+    DateTime now = DateTime.now();
+    DateTime twoWeeksAgo = now.subtract(Duration(days: 14));
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString(
+        'lastrefreshed3',
+        DateTime(twoWeeksAgo.year, twoWeeksAgo.month, twoWeeksAgo.day)
+            .toIso8601String());
+    prefs.setInt("totalHealthDataPoints", 0);
+    totalHealthDatapointsLogged = 0;
+    setState(() => print(now.subtract(Duration(days: 14))));
+    ;
+  }
 
   Widget _contentFetchingData() {
     return Column(
@@ -641,7 +987,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Color.fromRGBO(210, 107, 191, 1)
                       ]).createShader(bounds),
                   child: Text(
-                    '${_datastoreHealthDataList!.length}',
+                    '${totalHealthDatapointsLogged}',
                     style: TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.bold,
@@ -1389,7 +1735,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // fetchDailySleep();
         // fetchDailyHeartRate();
         // fetchDailyRestingHeartRate();
-        return fetchData();
+
+        // return fetchDashboardData();
+        return fetchBatchData();
       },
     );
   }
@@ -1417,23 +1765,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // }
 
   Widget _contentNoData() {
-    List<String> noDataText = ["No Data to show, pull down to refresh."];
+    List<String> noDataText = [
+      "No Data to show, pull down to refresh.",
+      "",
+      "Please make sure that your smartwatch data is syncing to Google Fit or Apple Health."
+    ];
     return RefreshIndicator(
         child: ListView.builder(
+            padding: EdgeInsets.all(16),
             itemCount: noDataText.length,
             itemBuilder: (_, index) {
               return Text(
                 noDataText[index],
                 textScaleFactor: 1.3,
+                textAlign: TextAlign.center,
               );
             }),
         onRefresh: () {
-          return fetchData();
+          // return fetchDashboardData();
+          return fetchBatchData();
         });
   }
 
   Widget _contentNotFetched() {
-    return Text('something went wrong, please restart the app');
+    // return Text('something went wrong, please restart the app');
+    return Text('');
   }
 
   Widget _noAppState() {
@@ -1441,13 +1797,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _authorizationNotGranted() {
-    return RefreshIndicator(
-      child: Text(
-        '''Authorization not given. Refresh to try again.''',
-        textAlign: TextAlign.center,
-      ),
-      onRefresh: () => fetchData(),
-    );
+    // return RefreshIndicator(
+    //   child: Text(
+    //     '''Authorization not given. Refresh to try again.''',
+    //     textAlign: TextAlign.center,
+    //   ),
+    //   onRefresh: () => fetchData(),
+    // );
+    return Text('Authorization not given. '
+        'For Android please check your OAUTH2 client ID is correct in Google Developer Console. '
+        'For iOS check your permissions in Apple Health.');
   }
 
   Widget _userOptedOut() {
@@ -1612,18 +1971,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // ],
 
             /// Update Demographic Data Button
-            buildMenuItem(
-                text: 'Update my info',
-                icon: Icons.upgrade,
-                onClicked: () {
-                  Navigator.pushReplacementNamed(context, '/validation_form');
-                  // updateDemographicData();
-                  // Navigator.pop(context);
-                }),
+            // buildMenuItem(
+            //     text: 'Update my info',
+            //     icon: Icons.upgrade,
+            //     onClicked: () {
+            //       Navigator.pushReplacementNamed(context, '/validation_form');
+            //       // updateDemographicData();
+            //       // Navigator.pop(context);
+            //     }),
 
-            const SizedBox(
-              height: 10,
+            Visibility(
+              child: buildMenuItem(
+                  text: 'Upload past health data',
+                  icon: Icons.upload_file,
+                  onClicked: () {
+                    Navigator.pushReplacementNamed(context, '/upload_data');
+                    // updateDemographicData();
+                    // Navigator.pop(context);
+                  }),
+              visible:
+                  (networkFlag == true && optedOut == false) ? true : false,
+              // visible: true,
             ),
+            Visibility(
+              child: buildMenuItem(
+                  text: 'Reset Last Refreshed3',
+                  icon: Icons.functions,
+                  onClicked: () {
+                    resetLastRefreshed3();
+                    // final prefs = SharedPreferences.getInstance();
+                    // prefs.setString('lastrefreshed3', nextMidnight.toIso8601String());
+                  }),
+              visible: false,
+            ),
+
+            // const SizedBox(
+            //   height: 10,
+            // ),
 
             _state == AppState.USER_OPTED_OUT
                 ? buildMenuItem(
@@ -1643,7 +2027,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             TextButton(
                                 onPressed: () {
                                   optOut(false);
-                                  fetchData();
+                                  // fetchData();
+                                  // fetchDashboardData();
+                                  fetchBatchData();
                                   scheduleNotifications();
                                   Navigator.pushNamed(context, '/dashboard');
                                 },
@@ -1698,9 +2084,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             Divider(color: Colors.white),
 
-            const SizedBox(
-              height: 10,
-            ),
+            // const SizedBox(
+            //   height: 10,
+            // ),
 
             buildMenuItem(
                 text: 'Logout',
@@ -1710,6 +2096,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Amplify.Auth.signOut().then(
                       (_) => Navigator.pushReplacementNamed(context, '/'));
                 }),
+
+            Divider(color: Colors.white),
+
+            Visibility(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    "Last Synced Date: $lastBatchSyncDate",
+                    style: TextStyle(
+                        color: Colors.white70, fontWeight: FontWeight.w300),
+                  ),
+                ),
+              ),
+              visible: optedOut == true ? false : true,
+            ),
 
             // const SizedBox(
             //   height: 10,
@@ -1800,7 +2202,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           backgroundColor: Color.fromRGBO(36, 38, 94, 1),
-          actions: <Widget>[],
+          actions: <Widget>[
+            networkFlag == false
+                ? Padding(
+                    padding: const EdgeInsets.only(right: 15),
+                    child: Icon(
+                      Icons.signal_wifi_statusbar_connected_no_internet_4,
+                      size: 20,
+                      color: Colors.red,
+                    ),
+                  )
+                : uploadingToStorage == true
+                    ? Padding(
+                        padding: const EdgeInsets.only(right: 15),
+                        child: Icon(Icons.cloud_upload_outlined),
+                      )
+                    : SizedBox.shrink()
+          ],
         ),
         body: Center(
           child: _content(),
@@ -1833,7 +2251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                     onTap: () {
                       int nextScreenState = 2;
-                      Navigator.of(context).pushReplacementNamed('/symptom_log',
+                      Navigator.of(context).pushReplacementNamed('/log_data',
                           arguments: nextScreenState);
                     },
                   ),
@@ -1846,7 +2264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                     onTap: () {
                       int nextScreenState = 1;
-                      Navigator.of(context).pushReplacementNamed('/symptom_log',
+                      Navigator.of(context).pushReplacementNamed('/log_data',
                           arguments: nextScreenState);
                     },
                   ),
@@ -1859,21 +2277,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                     onTap: () {
                       int nextScreenState = 0;
-                      Navigator.of(context).pushReplacementNamed('/symptom_log',
+                      Navigator.of(context).pushReplacementNamed('/log_data',
                           arguments: nextScreenState);
                     },
                   ),
                 ],
               ),
-        // FloatingActionButton.extended(
-        //     label: const Text('Log Data'),
-        //     backgroundColor: Color.fromRGBO(50, 75, 205, 1),
-        //     onPressed: () {
-        //       // setState(() => _state = AppState.LOGGING_SYMPTOMS);
-        //       Navigator.pushReplacementNamed(context, '/symptom_log');
-        //     },
-        //     icon: const Icon((Icons.add), color: Colors.white),
-        //   )
       ),
     );
   }
