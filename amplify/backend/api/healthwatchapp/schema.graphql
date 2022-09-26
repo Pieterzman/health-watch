@@ -1,4 +1,4 @@
-type HealthDataUser @model @auth(rules: [{allow: public}]) {
+type HealthDataUser @model @auth(rules: [{ allow: owner }]) {
   id: ID!
   useruuID: String!
   age: String
@@ -10,25 +10,13 @@ type HealthDataUser @model @auth(rules: [{allow: public}]) {
   signedUp: AWSDateTime!
   lastSignedIn: AWSDateTime!
   lastRefreshed: AWSDateTime!
-  healthDataPts: [HealthDataPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
   symptomPts: [SymptomPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
-  IllnessPts: [IllnessPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
-  AlcConsumptionPts: [AlcConsumptionPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
+  illnessPts: [IllnessPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
+  alcConsumptionPts: [AlcConsumptionPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
+  wifiPts: [WifiPt] @connection(keyName: "byHealthDataUser", fields: ["id"])
 }
 
-type HealthDataPt @model @auth(rules: [{allow: public}])
-@key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
-  id: ID!
-  healthdatauserID: ID!
-  typeString: String!
-  value: Float!
-  unitString: String!
-  sourceID: String!
-  dateFrom: AWSDateTime!
-  dateTo: AWSDateTime!
-  }  
-
-type SymptomPt @model @auth(rules: [{allow: public}])
+type SymptomPt @model @auth(rules: [{ allow: owner }])
 @key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
   id: ID!
   healthdatauserID: ID!
@@ -36,7 +24,7 @@ type SymptomPt @model @auth(rules: [{allow: public}])
   loggedDate: AWSDate!
   }  
 
-type IllnessPt @model @auth(rules: [{allow: public}])
+type IllnessPt @model @auth(rules: [{ allow: owner }])
 @key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
   id: ID!
   healthdatauserID: ID!
@@ -45,7 +33,7 @@ type IllnessPt @model @auth(rules: [{allow: public}])
   loggedDate: AWSDate!
   }  
 
-type AlcConsumptionPt @model @auth(rules: [{allow: public}])
+type AlcConsumptionPt @model @auth(rules: [{ allow: owner }])
 @key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
   id: ID!
   healthdatauserID: ID!
@@ -54,7 +42,7 @@ type AlcConsumptionPt @model @auth(rules: [{allow: public}])
   loggedDateTime: AWSDateTime
   }
 
-  type WifiPt @model @auth(rules: [{allow: public}])
+  type WifiPt @model @auth(rules: [{ allow: owner }])
   @key(name: "byHealthDataUser", fields: ["healthdatauserID"]) {
   id: ID!
   healthdatauserID: ID!
