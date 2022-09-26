@@ -5,15 +5,14 @@
     "serviceName": "AppSync",
     "gqlSchemaPath": "/Users/pieterzietsman/Development/MastersApp/healthwatch/amplify/backend/api/healthwatchapp/schema.graphql",
     "defaultAuthType": {
-      "mode": "API_KEY",
-      "expirationTime": 360,
-      "apiKeyExpirationDate": "2023-03-27T13:23:08.770Z",
-      "keyDescription": "healthwatchappAPIkey"
+      "mode": "AMAZON_COGNITO_USER_POOLS",
+      "cognitoUserPoolId": "authhealthwatchapp5a4a01f2"
     },
     "conflictResolution": {
       "defaultResolutionStrategy": {
         "type": "AUTOMERGE"
       }
-    }
+    },
+    "additionalAuthTypes": []
   }
 }
