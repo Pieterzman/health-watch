@@ -40,10 +40,10 @@ class HealthDataUser extends Model {
   final TemporalDateTime? _signedUp;
   final TemporalDateTime? _lastSignedIn;
   final TemporalDateTime? _lastRefreshed;
-  final List<HealthDataPt>? _healthDataPts;
   final List<SymptomPt>? _symptomPts;
-  final List<IllnessPt>? _IllnessPts;
-  final List<AlcConsumptionPt>? _AlcConsumptionPts;
+  final List<IllnessPt>? _illnessPts;
+  final List<AlcConsumptionPt>? _alcConsumptionPts;
+  final List<WifiPt>? _wifiPts;
   final TemporalDateTime? _createdAt;
   final TemporalDateTime? _updatedAt;
 
@@ -140,20 +140,20 @@ class HealthDataUser extends Model {
     }
   }
   
-  List<HealthDataPt>? get healthDataPts {
-    return _healthDataPts;
-  }
-  
   List<SymptomPt>? get symptomPts {
     return _symptomPts;
   }
   
-  List<IllnessPt>? get IllnessPts {
-    return _IllnessPts;
+  List<IllnessPt>? get illnessPts {
+    return _illnessPts;
   }
   
-  List<AlcConsumptionPt>? get AlcConsumptionPts {
-    return _AlcConsumptionPts;
+  List<AlcConsumptionPt>? get alcConsumptionPts {
+    return _alcConsumptionPts;
+  }
+  
+  List<WifiPt>? get wifiPts {
+    return _wifiPts;
   }
   
   TemporalDateTime? get createdAt {
@@ -164,9 +164,9 @@ class HealthDataUser extends Model {
     return _updatedAt;
   }
   
-  const HealthDataUser._internal({required this.id, required useruuID, age, weight, height, sex, smartwatch, required opt_out, required signedUp, required lastSignedIn, required lastRefreshed, healthDataPts, symptomPts, IllnessPts, AlcConsumptionPts, createdAt, updatedAt}): _useruuID = useruuID, _age = age, _weight = weight, _height = height, _sex = sex, _smartwatch = smartwatch, _opt_out = opt_out, _signedUp = signedUp, _lastSignedIn = lastSignedIn, _lastRefreshed = lastRefreshed, _healthDataPts = healthDataPts, _symptomPts = symptomPts, _IllnessPts = IllnessPts, _AlcConsumptionPts = AlcConsumptionPts, _createdAt = createdAt, _updatedAt = updatedAt;
+  const HealthDataUser._internal({required this.id, required useruuID, age, weight, height, sex, smartwatch, required opt_out, required signedUp, required lastSignedIn, required lastRefreshed, symptomPts, illnessPts, alcConsumptionPts, wifiPts, createdAt, updatedAt}): _useruuID = useruuID, _age = age, _weight = weight, _height = height, _sex = sex, _smartwatch = smartwatch, _opt_out = opt_out, _signedUp = signedUp, _lastSignedIn = lastSignedIn, _lastRefreshed = lastRefreshed, _symptomPts = symptomPts, _illnessPts = illnessPts, _alcConsumptionPts = alcConsumptionPts, _wifiPts = wifiPts, _createdAt = createdAt, _updatedAt = updatedAt;
   
-  factory HealthDataUser({String? id, required String useruuID, String? age, String? weight, String? height, String? sex, String? smartwatch, required bool opt_out, required TemporalDateTime signedUp, required TemporalDateTime lastSignedIn, required TemporalDateTime lastRefreshed, List<HealthDataPt>? healthDataPts, List<SymptomPt>? symptomPts, List<IllnessPt>? IllnessPts, List<AlcConsumptionPt>? AlcConsumptionPts}) {
+  factory HealthDataUser({String? id, required String useruuID, String? age, String? weight, String? height, String? sex, String? smartwatch, required bool opt_out, required TemporalDateTime signedUp, required TemporalDateTime lastSignedIn, required TemporalDateTime lastRefreshed, List<SymptomPt>? symptomPts, List<IllnessPt>? illnessPts, List<AlcConsumptionPt>? alcConsumptionPts, List<WifiPt>? wifiPts}) {
     return HealthDataUser._internal(
       id: id == null ? UUID.getUUID() : id,
       useruuID: useruuID,
@@ -179,10 +179,10 @@ class HealthDataUser extends Model {
       signedUp: signedUp,
       lastSignedIn: lastSignedIn,
       lastRefreshed: lastRefreshed,
-      healthDataPts: healthDataPts != null ? List<HealthDataPt>.unmodifiable(healthDataPts) : healthDataPts,
       symptomPts: symptomPts != null ? List<SymptomPt>.unmodifiable(symptomPts) : symptomPts,
-      IllnessPts: IllnessPts != null ? List<IllnessPt>.unmodifiable(IllnessPts) : IllnessPts,
-      AlcConsumptionPts: AlcConsumptionPts != null ? List<AlcConsumptionPt>.unmodifiable(AlcConsumptionPts) : AlcConsumptionPts);
+      illnessPts: illnessPts != null ? List<IllnessPt>.unmodifiable(illnessPts) : illnessPts,
+      alcConsumptionPts: alcConsumptionPts != null ? List<AlcConsumptionPt>.unmodifiable(alcConsumptionPts) : alcConsumptionPts,
+      wifiPts: wifiPts != null ? List<WifiPt>.unmodifiable(wifiPts) : wifiPts);
   }
   
   bool equals(Object other) {
@@ -204,10 +204,10 @@ class HealthDataUser extends Model {
       _signedUp == other._signedUp &&
       _lastSignedIn == other._lastSignedIn &&
       _lastRefreshed == other._lastRefreshed &&
-      DeepCollectionEquality().equals(_healthDataPts, other._healthDataPts) &&
       DeepCollectionEquality().equals(_symptomPts, other._symptomPts) &&
-      DeepCollectionEquality().equals(_IllnessPts, other._IllnessPts) &&
-      DeepCollectionEquality().equals(_AlcConsumptionPts, other._AlcConsumptionPts);
+      DeepCollectionEquality().equals(_illnessPts, other._illnessPts) &&
+      DeepCollectionEquality().equals(_alcConsumptionPts, other._alcConsumptionPts) &&
+      DeepCollectionEquality().equals(_wifiPts, other._wifiPts);
   }
   
   @override
@@ -236,7 +236,7 @@ class HealthDataUser extends Model {
     return buffer.toString();
   }
   
-  HealthDataUser copyWith({String? id, String? useruuID, String? age, String? weight, String? height, String? sex, String? smartwatch, bool? opt_out, TemporalDateTime? signedUp, TemporalDateTime? lastSignedIn, TemporalDateTime? lastRefreshed, List<HealthDataPt>? healthDataPts, List<SymptomPt>? symptomPts, List<IllnessPt>? IllnessPts, List<AlcConsumptionPt>? AlcConsumptionPts}) {
+  HealthDataUser copyWith({String? id, String? useruuID, String? age, String? weight, String? height, String? sex, String? smartwatch, bool? opt_out, TemporalDateTime? signedUp, TemporalDateTime? lastSignedIn, TemporalDateTime? lastRefreshed, List<SymptomPt>? symptomPts, List<IllnessPt>? illnessPts, List<AlcConsumptionPt>? alcConsumptionPts, List<WifiPt>? wifiPts}) {
     return HealthDataUser._internal(
       id: id ?? this.id,
       useruuID: useruuID ?? this.useruuID,
@@ -249,10 +249,10 @@ class HealthDataUser extends Model {
       signedUp: signedUp ?? this.signedUp,
       lastSignedIn: lastSignedIn ?? this.lastSignedIn,
       lastRefreshed: lastRefreshed ?? this.lastRefreshed,
-      healthDataPts: healthDataPts ?? this.healthDataPts,
       symptomPts: symptomPts ?? this.symptomPts,
-      IllnessPts: IllnessPts ?? this.IllnessPts,
-      AlcConsumptionPts: AlcConsumptionPts ?? this.AlcConsumptionPts);
+      illnessPts: illnessPts ?? this.illnessPts,
+      alcConsumptionPts: alcConsumptionPts ?? this.alcConsumptionPts,
+      wifiPts: wifiPts ?? this.wifiPts);
   }
   
   HealthDataUser.fromJson(Map<String, dynamic> json)  
@@ -267,35 +267,35 @@ class HealthDataUser extends Model {
       _signedUp = json['signedUp'] != null ? TemporalDateTime.fromString(json['signedUp']) : null,
       _lastSignedIn = json['lastSignedIn'] != null ? TemporalDateTime.fromString(json['lastSignedIn']) : null,
       _lastRefreshed = json['lastRefreshed'] != null ? TemporalDateTime.fromString(json['lastRefreshed']) : null,
-      _healthDataPts = json['healthDataPts'] is List
-        ? (json['healthDataPts'] as List)
-          .where((e) => e?['serializedData'] != null)
-          .map((e) => HealthDataPt.fromJson(new Map<String, dynamic>.from(e['serializedData'])))
-          .toList()
-        : null,
       _symptomPts = json['symptomPts'] is List
         ? (json['symptomPts'] as List)
           .where((e) => e?['serializedData'] != null)
           .map((e) => SymptomPt.fromJson(new Map<String, dynamic>.from(e['serializedData'])))
           .toList()
         : null,
-      _IllnessPts = json['IllnessPts'] is List
-        ? (json['IllnessPts'] as List)
+      _illnessPts = json['illnessPts'] is List
+        ? (json['illnessPts'] as List)
           .where((e) => e?['serializedData'] != null)
           .map((e) => IllnessPt.fromJson(new Map<String, dynamic>.from(e['serializedData'])))
           .toList()
         : null,
-      _AlcConsumptionPts = json['AlcConsumptionPts'] is List
-        ? (json['AlcConsumptionPts'] as List)
+      _alcConsumptionPts = json['alcConsumptionPts'] is List
+        ? (json['alcConsumptionPts'] as List)
           .where((e) => e?['serializedData'] != null)
           .map((e) => AlcConsumptionPt.fromJson(new Map<String, dynamic>.from(e['serializedData'])))
+          .toList()
+        : null,
+      _wifiPts = json['wifiPts'] is List
+        ? (json['wifiPts'] as List)
+          .where((e) => e?['serializedData'] != null)
+          .map((e) => WifiPt.fromJson(new Map<String, dynamic>.from(e['serializedData'])))
           .toList()
         : null,
       _createdAt = json['createdAt'] != null ? TemporalDateTime.fromString(json['createdAt']) : null,
       _updatedAt = json['updatedAt'] != null ? TemporalDateTime.fromString(json['updatedAt']) : null;
   
   Map<String, dynamic> toJson() => {
-    'id': id, 'useruuID': _useruuID, 'age': _age, 'weight': _weight, 'height': _height, 'sex': _sex, 'smartwatch': _smartwatch, 'opt_out': _opt_out, 'signedUp': _signedUp?.format(), 'lastSignedIn': _lastSignedIn?.format(), 'lastRefreshed': _lastRefreshed?.format(), 'healthDataPts': _healthDataPts?.map((HealthDataPt? e) => e?.toJson()).toList(), 'symptomPts': _symptomPts?.map((SymptomPt? e) => e?.toJson()).toList(), 'IllnessPts': _IllnessPts?.map((IllnessPt? e) => e?.toJson()).toList(), 'AlcConsumptionPts': _AlcConsumptionPts?.map((AlcConsumptionPt? e) => e?.toJson()).toList(), 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
+    'id': id, 'useruuID': _useruuID, 'age': _age, 'weight': _weight, 'height': _height, 'sex': _sex, 'smartwatch': _smartwatch, 'opt_out': _opt_out, 'signedUp': _signedUp?.format(), 'lastSignedIn': _lastSignedIn?.format(), 'lastRefreshed': _lastRefreshed?.format(), 'symptomPts': _symptomPts?.map((SymptomPt? e) => e?.toJson()).toList(), 'illnessPts': _illnessPts?.map((IllnessPt? e) => e?.toJson()).toList(), 'alcConsumptionPts': _alcConsumptionPts?.map((AlcConsumptionPt? e) => e?.toJson()).toList(), 'wifiPts': _wifiPts?.map((WifiPt? e) => e?.toJson()).toList(), 'createdAt': _createdAt?.format(), 'updatedAt': _updatedAt?.format()
   };
 
   static final QueryField ID = QueryField(fieldName: "healthDataUser.id");
@@ -309,25 +309,28 @@ class HealthDataUser extends Model {
   static final QueryField SIGNEDUP = QueryField(fieldName: "signedUp");
   static final QueryField LASTSIGNEDIN = QueryField(fieldName: "lastSignedIn");
   static final QueryField LASTREFRESHED = QueryField(fieldName: "lastRefreshed");
-  static final QueryField HEALTHDATAPTS = QueryField(
-    fieldName: "healthDataPts",
-    fieldType: ModelFieldType(ModelFieldTypeEnum.model, ofModelName: (HealthDataPt).toString()));
   static final QueryField SYMPTOMPTS = QueryField(
     fieldName: "symptomPts",
     fieldType: ModelFieldType(ModelFieldTypeEnum.model, ofModelName: (SymptomPt).toString()));
   static final QueryField ILLNESSPTS = QueryField(
-    fieldName: "IllnessPts",
+    fieldName: "illnessPts",
     fieldType: ModelFieldType(ModelFieldTypeEnum.model, ofModelName: (IllnessPt).toString()));
   static final QueryField ALCCONSUMPTIONPTS = QueryField(
-    fieldName: "AlcConsumptionPts",
+    fieldName: "alcConsumptionPts",
     fieldType: ModelFieldType(ModelFieldTypeEnum.model, ofModelName: (AlcConsumptionPt).toString()));
+  static final QueryField WIFIPTS = QueryField(
+    fieldName: "wifiPts",
+    fieldType: ModelFieldType(ModelFieldTypeEnum.model, ofModelName: (WifiPt).toString()));
   static var schema = Model.defineSchema(define: (ModelSchemaDefinition modelSchemaDefinition) {
     modelSchemaDefinition.name = "HealthDataUser";
     modelSchemaDefinition.pluralName = "HealthDataUsers";
     
     modelSchemaDefinition.authRules = [
       AuthRule(
-        authStrategy: AuthStrategy.PUBLIC,
+        authStrategy: AuthStrategy.OWNER,
+        ownerField: "owner",
+        identityClaim: "cognito:username",
+        provider: AuthRuleProvider.USERPOOLS,
         operations: [
           ModelOperation.CREATE,
           ModelOperation.UPDATE,
@@ -399,13 +402,6 @@ class HealthDataUser extends Model {
     ));
     
     modelSchemaDefinition.addField(ModelFieldDefinition.hasMany(
-      key: HealthDataUser.HEALTHDATAPTS,
-      isRequired: false,
-      ofModelName: (HealthDataPt).toString(),
-      associatedKey: HealthDataPt.HEALTHDATAUSERID
-    ));
-    
-    modelSchemaDefinition.addField(ModelFieldDefinition.hasMany(
       key: HealthDataUser.SYMPTOMPTS,
       isRequired: false,
       ofModelName: (SymptomPt).toString(),
@@ -424,6 +420,13 @@ class HealthDataUser extends Model {
       isRequired: false,
       ofModelName: (AlcConsumptionPt).toString(),
       associatedKey: AlcConsumptionPt.HEALTHDATAUSERID
+    ));
+    
+    modelSchemaDefinition.addField(ModelFieldDefinition.hasMany(
+      key: HealthDataUser.WIFIPTS,
+      isRequired: false,
+      ofModelName: (WifiPt).toString(),
+      associatedKey: WifiPt.HEALTHDATAUSERID
     ));
     
     modelSchemaDefinition.addField(ModelFieldDefinition.nonQueryField(
