@@ -1,5 +1,8 @@
 // import 'package:amplify_datastore/amplify_datastore.dart';
+import 'dart:io';
+
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:healthwatch/models/ModelProvider.dart';
 
 import 'package:flutter/material.dart';
@@ -108,6 +111,8 @@ class _ValidationFormScreenState extends State<ValidationFormScreen> {
     prefs.setBool("demographicDataLogged", false);
     // setState(() => _state = AppState.LOG_DEMOGRAPHIC_DATA);
   }
+
+  void doNothing() {}
 
   Widget buildAge() => TextFormField(
         autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -354,6 +359,7 @@ class _ValidationFormScreenState extends State<ValidationFormScreen> {
                 children: [
                   if (currentStep != 0)
                     Expanded(
+                      flex: isLastStep ? 2 : 1,
                       child: ElevatedButton(
                         child: Text(
                           'BACK',
@@ -366,15 +372,29 @@ class _ValidationFormScreenState extends State<ValidationFormScreen> {
                     width: 12,
                   ),
                   Expanded(
-                    child: ElevatedButton(
-                      child: Text(
-                        isLastStep ? 'CONFIRM' : 'NEXT',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                      onPressed: isLastStep
-                          ? (termsCheckbox ? details.onStepContinue : null)
-                          : details.onStepContinue,
-                    ),
+                    flex: isLastStep ? 3 : 1,
+                    child: isLastStep && Platform.isAndroid
+                        ? SignInButton(
+                            Buttons.Google,
+                            onPressed: termsCheckbox
+                                ? details.onStepContinue!
+                                : doNothing,
+                            // onPressed: () {
+                            //   // print("button pressed");
+                            //   termsCheckbox ? details.onStepContinue! : null;
+                            // },
+                          )
+                        : ElevatedButton(
+                            child: Text(
+                              isLastStep ? 'CONFIRM' : 'NEXT',
+                              style: TextStyle(fontSize: 18),
+                            ),
+                            onPressed: isLastStep
+                                ? (termsCheckbox
+                                    ? details.onStepContinue
+                                    : null)
+                                : details.onStepContinue,
+                          ),
                   ),
                 ],
               ),
